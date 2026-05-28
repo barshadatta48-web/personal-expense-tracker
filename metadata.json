@@ -1,0 +1,6 @@
+{
+  "name": "Personal Expense Tracker",
+  "description": "A premium, responsive personal finance companion with smart categories, advanced analytics, and custom AI insights powered by Gemini.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
