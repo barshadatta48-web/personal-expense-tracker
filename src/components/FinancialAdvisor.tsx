@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Transaction, Budget, FinancialGoal } from '../types';
+import { useCurrency } from '../contexts/CurrencyContext';
 import { Sparkles, MessageSquare, Loader2, Send, ShieldCheck, PieChart, TrendingUp, Compass } from 'lucide-react';
 
 interface FinancialAdvisorProps {
@@ -9,6 +10,7 @@ interface FinancialAdvisorProps {
 }
 
 export default function FinancialAdvisor({ transactions, budgets, goals }: FinancialAdvisorProps) {
+  const { currency } = useCurrency();
   const [messages, setMessages] = useState<Array<{ id: string; role: 'user' | 'assistant'; text: string }>>([]);
   const [inputPrompt, setInputPrompt] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -57,7 +59,10 @@ export default function FinancialAdvisor({ transactions, budgets, goals }: Finan
           transactions,
           budgets,
           goals,
-          userPrompt: promptString
+          userPrompt: promptString,
+          currencyCode: currency.code,
+          currencySymbol: currency.symbol,
+          currencyRate: currency.rate
         })
       });
 
@@ -85,7 +90,7 @@ export default function FinancialAdvisor({ transactions, budgets, goals }: Finan
           { 
             id: (Date.now() + 1).toString(), 
             role: 'assistant', 
-            text: `⚠️ **Service Access Interrupted**\n\nCould not access the AI Financial Planning server. Please make sure your **GEMINI_API_KEY** is configured correctly in the Secrets panel.\n\nError: ${error.message}` 
+            text: `⚠️ **AI Advisor Not Available**\n\nCould not connect to the AI Financial Advisor. Please verify that your Gemini API key is set up correctly in your Settings.\n\nError: ${error.message}` 
           }
         ];
       });
@@ -158,20 +163,20 @@ export default function FinancialAdvisor({ transactions, budgets, goals }: Finan
       <div className="bg-white p-5 border border-gray-100 rounded-2xl shadow-xs lg:col-span-1 flex flex-col justify-between">
         <div className="space-y-4">
           <div>
-            <h3 className="text-base font-display font-semibold text-gray-800">AI Planner Intelligence</h3>
-            <p className="text-xs text-gray-500 font-sans mt-0.5">Custom analysis powered by Gemini cognitive processing</p>
+            <h3 className="text-base font-display font-semibold text-gray-800">AI Advisor</h3>
+            <p className="text-xs text-gray-500 font-sans mt-0.5">Get tips and answers about your finances.</p>
           </div>
 
           <div className="space-y-3 font-sans">
             <div className="flex items-start gap-2.5 p-3.5 bg-emerald-50 border border-emerald-100 rounded-xl text-xs text-emerald-800">
               <Compass className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
               <div>
-                <span className="font-bold">Portfolio ground truth</span>
-                <p className="text-[11px] text-emerald-700/90 mt-0.5">The advisor scans active transactions: {transactions.length} records, {budgets.length} budget benchmarks, and {goals.length} target milestones.</p>
+                <span className="font-bold">Your Data Summary</span>
+                <p className="text-[11px] text-emerald-700/90 mt-0.5">The AI will look at your current data: {transactions.length} transactions, {budgets.length} budgets, and {goals.length} goals.</p>
               </div>
             </div>
 
-            <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider mt-5">Suggestions Toolbox</div>
+            <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider mt-5">Questions to Ask</div>
             <div className="space-y-2">
               {SUGGESTED_QUESTIONS.map((q, idx) => (
                 <button
@@ -189,7 +194,7 @@ export default function FinancialAdvisor({ transactions, budgets, goals }: Finan
 
         <div className="flex items-center gap-2 mt-5 bg-gray-50 p-3 rounded-xl border border-gray-100 text-[10px] text-gray-400 font-sans">
           <ShieldCheck className="w-4 h-4 text-slate-400 shrink-0" />
-          <span>Local client isolated processing. Transactions are dispatched server-side anonymously to safeguard user files.</span>
+          <span>Your transactions are sent securely and anonymously to retrieve advisor suggestions.</span>
         </div>
       </div>
 
@@ -199,7 +204,7 @@ export default function FinancialAdvisor({ transactions, budgets, goals }: Finan
         <div className="px-5 py-4 border-b border-gray-100 bg-gray-50/25 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Sparkles className="w-4 h-4 text-emerald-600 animate-pulse" />
-            <span className="text-xs font-bold text-gray-800 tracking-wide font-sans uppercase">Gemini Planner Consultation Port</span>
+            <span className="text-xs font-bold text-gray-800 tracking-wide font-sans uppercase">Chat with AI Advisor</span>
           </div>
           <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-sans font-bold uppercase tracking-wider">Active</span>
         </div>
@@ -226,7 +231,7 @@ export default function FinancialAdvisor({ transactions, budgets, goals }: Finan
                 {m.role === 'user' ? m.text : parseMarkdown(m.text)}
               </div>
               <span className="text-[10px] text-gray-400 font-mono mt-1 px-1">
-                {m.role === 'user' ? 'Client' : 'Gemini Advisor'}
+                {m.role === 'user' ? 'Me' : 'AI Advisor'}
               </span>
             </div>
           ))}
@@ -234,7 +239,7 @@ export default function FinancialAdvisor({ transactions, budgets, goals }: Finan
           {isLoading && (
             <div className="flex items-center gap-2 mr-auto text-gray-400 text-xs py-2">
               <Loader2 className="w-3.5 h-3.5 animate-spin" />
-              <span>Analyzing financial vector matrices...</span>
+              <span>AI is thinking...</span>
             </div>
           )}
         </div>
@@ -243,7 +248,7 @@ export default function FinancialAdvisor({ transactions, budgets, goals }: Finan
         <form onSubmit={handleSendPrompt} className="p-4 border-t border-gray-100 flex items-center gap-2">
           <input
             type="text"
-            placeholder="Ask specific budgeting, cashflow query..."
+            placeholder="Ask advice on saving, budgeting, or bills..."
             value={inputPrompt}
             onChange={(e) => setInputPrompt(e.target.value)}
             disabled={isLoading}

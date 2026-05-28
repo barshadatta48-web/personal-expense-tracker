@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { Transaction, Budget, CATEGORIES } from '../types';
+import { useCurrency } from '../contexts/CurrencyContext';
 import { Plus, Percent, AlertTriangle, ShieldCheck, HelpCircle } from 'lucide-react';
 
 interface BudgetManagerProps {
@@ -9,6 +10,7 @@ interface BudgetManagerProps {
 }
 
 export default function BudgetManager({ transactions, budgets, onSetBudgetLimit }: BudgetManagerProps) {
+  const { currency, formatRaw, fromActiveCurrency } = useCurrency();
   const [selectedCategory, setSelectedCategory] = useState(CATEGORIES.expense[0]);
   const [limitAmount, setLimitAmount] = useState('');
 
@@ -52,24 +54,26 @@ export default function BudgetManager({ transactions, budgets, onSetBudgetLimit 
       alert("Provide a valid numeric budget limit.");
       return;
     }
-    onSetBudgetLimit(selectedCategory, lmtNum);
+    // Convert active currency amount back to USD Base
+    const usdLimit = fromActiveCurrency(lmtNum);
+    onSetBudgetLimit(selectedCategory, usdLimit);
     setLimitAmount('');
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 font-sans">
       {/* Configure a Budget limits Box */}
       <div className="bg-white p-5 border border-gray-100 rounded-2xl shadow-xs lg:col-span-1">
         <h3 className="text-base font-display font-semibold text-gray-800">Set Monthly Budgets</h3>
-        <p className="text-xs text-gray-500 font-sans mt-0.5 mb-4">Establish boundaries for specific expense classes</p>
+        <p className="text-xs text-gray-500 font-sans mt-0.5 mb-4">Set maximum limits on how much you want to spend.</p>
 
         <form onSubmit={handleSaveBudget} className="space-y-4">
           <div>
-            <label className="block text-xs font-bold text-gray-400 tracking-wider uppercase mb-1">Expense Category</label>
+            <label className="block text-xs font-bold text-gray-400 tracking-wider uppercase mb-1">Category</label>
             <select
               value={selectedCategory}
               onChange={(e) => setSelectedCategory(e.target.value)}
-              className="w-full text-xs py-2.5 px-3.5 bg-gray-50/50 border border-gray-100 focus:outline-hidden focus:border-emerald-600 focus:bg-white rounded-xl cursor-not-allowed appearance-none"
+              className="w-full text-xs py-2.5 px-3.5 bg-gray-50/50 border border-gray-100 focus:outline-hidden focus:border-emerald-600 focus:bg-white rounded-xl cursor-pointer appearance-none"
             >
               {CATEGORIES.expense.map(c => (
                 <option key={c} value={c}>{c}</option>
@@ -78,14 +82,17 @@ export default function BudgetManager({ transactions, budgets, onSetBudgetLimit 
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-gray-400 tracking-wider uppercase mb-1">Budget Limit ($ USD)</label>
+            <label className="block text-xs font-bold text-gray-400 tracking-wider uppercase mb-1">
+              Budget Limit ({currency.symbol} {currency.code})
+            </label>
             <input
               type="number"
+              step="any"
               placeholder="e.g. 500"
               required
               value={limitAmount}
               onChange={(e) => setLimitAmount(e.target.value)}
-              className="w-full text-xs py-2.5 px-3.5 bg-gray-50/50 border border-gray-100 focus:outline-hidden focus:border-emerald-600 focus:bg-white rounded-xl"
+              className="w-full text-xs py-2.5 px-3.5 bg-gray-50/50 border border-gray-100 focus:outline-hidden focus:border-emerald-600 focus:bg-white rounded-xl font-mono"
             />
           </div>
 
@@ -93,28 +100,28 @@ export default function BudgetManager({ transactions, budgets, onSetBudgetLimit 
             type="submit"
             className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-display font-medium flex items-center justify-center gap-1.5 shadow-xs transition"
           >
-            <Plus className="w-3.5 h-3.5" /> Configure Budget
+            <Plus className="w-3.5 h-3.5" /> Save Budget
           </button>
         </form>
 
         <div className="bg-gray-50/50 p-4 border border-gray-100 rounded-xl mt-4 text-xs text-gray-500 space-y-2 font-sans">
-          <div className="font-semibold text-gray-700">How budgeting works:</div>
-          <p>Defining a budget limit ensures that our dynamic AI financial advisor can analyze categories which exceed limits, giving you personalized guidelines to reduce excess outflows.</p>
+          <div className="font-semibold text-gray-700">How budgets work:</div>
+          <p>Setting a monthly budget helps you track your spending. Our AI Advisor can also give you personalized tips to help you stay within your limits.</p>
         </div>
       </div>
 
       {/* Progress Bars and metrics column */}
       <div className="bg-white p-5 border border-gray-100 rounded-2xl shadow-xs lg:col-span-2 space-y-5">
         <div>
-          <h3 className="text-base font-display font-semibold text-gray-800">Budget Threshold Analysis</h3>
-          <p className="text-xs text-gray-500 font-sans mt-0.5">Real-time mapping of limits vs. category expenditures</p>
+          <h3 className="text-base font-display font-semibold text-gray-800">My Budgets</h3>
+          <p className="text-xs text-gray-500 font-sans mt-0.5">Track your spending limits compared to what you have spent.</p>
         </div>
 
         {budgetListWithStats.length === 0 ? (
           <div className="py-12 border border-dashed border-gray-100 rounded-2xl text-center text-gray-400 text-xs font-sans flex flex-col items-center justify-center">
             <ShieldCheck className="w-8 h-8 text-emerald-100 mb-1" />
-            <p className="font-semibold text-gray-600">All balances are completely unrestricted</p>
-            <p className="text-[11px] max-w-xs mt-0.5">Use the configurator on the left to activate active category target caps.</p>
+            <p className="font-semibold text-gray-600">No budgets set up yet.</p>
+            <p className="text-[11px] max-w-xs mt-0.5">Use the form on the left to set your first budget.</p>
           </div>
         ) : (
           <div className="space-y-4">
@@ -123,9 +130,9 @@ export default function BudgetManager({ transactions, budgets, onSetBudgetLimit 
                 <div className="flex items-center justify-between text-xs mb-1.5">
                   <span className="font-semibold text-gray-700">{item.category}</span>
                   <div className="text-[11px] text-gray-500 font-sans">
-                    <span className="font-semibold text-gray-800">${item.spent.toFixed(2)}</span>
+                    <span className="font-semibold text-gray-800 font-mono">{formatRaw(item.spent)}</span>
                     {item.limit > 0 ? (
-                      <> of <span className="font-semibold text-gray-600">${item.limit.toFixed(2)}</span> ({item.ratio.toFixed(0)}%)</>
+                      <> of <span className="font-semibold text-gray-600 font-mono">{formatRaw(item.limit)}</span> ({item.ratio.toFixed(0)}%)</>
                     ) : (
                       <> spent (No limit set)</>
                     )}
@@ -150,7 +157,7 @@ export default function BudgetManager({ transactions, budgets, onSetBudgetLimit 
                 {item.isExceeded && (
                   <div className="flex items-center gap-1.5 mt-2 bg-rose-50 text-rose-800 border border-rose-100 px-3 py-1.5 rounded-lg text-[10px] font-sans font-medium">
                     <AlertTriangle className="w-3.5 h-3.5 text-rose-500 shrink-0" />
-                    <span>Budget exceeded for {item.category} by ${Math.abs(item.spent - item.limit).toFixed(2)}! Consider cutting back.</span>
+                    <span>You went over your {item.category} budget by <span className="font-semibold font-mono">{formatRaw(Math.abs(item.spent - item.limit))}</span>! Try to cut back.</span>
                   </div>
                 )}
               </div>

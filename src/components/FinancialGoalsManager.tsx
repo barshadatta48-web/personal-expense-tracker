@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { FinancialGoal } from '../types';
+import { useCurrency } from '../contexts/CurrencyContext';
 import { Plus, Target, PiggyBank, Trash2, ShieldAlert } from 'lucide-react';
 
 interface FinancialGoalsManagerProps {
@@ -15,6 +16,7 @@ export default function FinancialGoalsManager({
   onUpdateGoalProgress,
   onDeleteGoal
 }: FinancialGoalsManagerProps) {
+  const { currency, formatRaw, fromActiveCurrency } = useCurrency();
   const [goalName, setGoalName] = useState('');
   const [targetAmount, setTargetAmount] = useState('');
   const [deadline, setDeadline] = useState('');
@@ -29,7 +31,9 @@ export default function FinancialGoalsManager({
       alert("Provide a valid goal descriptor and active non-zero target.");
       return;
     }
-    onAddGoal(goalName.trim(), lmtNum, deadline || undefined);
+    // Convert target local currency limit back to USD Base
+    const usdTarget = fromActiveCurrency(lmtNum);
+    onAddGoal(goalName.trim(), usdTarget, deadline || undefined);
     setGoalName('');
     setTargetAmount('');
     setDeadline('');
@@ -42,20 +46,22 @@ export default function FinancialGoalsManager({
       alert("Please enter a valid non-zero amount.");
       return;
     }
-    onUpdateGoalProgress(goalId, amtNum);
+    // Convert active currency deposit back to USD Base
+    const usdDeposit = fromActiveCurrency(amtNum);
+    onUpdateGoalProgress(goalId, usdDeposit);
     setDepositAmount(prev => ({ ...prev, [goalId]: '' }));
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 font-sans">
       {/* Col 1: Config Goal Objectives Form */}
       <div className="bg-white p-5 border border-gray-100 rounded-2xl shadow-xs lg:col-span-1">
-        <h3 className="text-base font-display font-semibold text-gray-800">Configure Savings Goals</h3>
-        <p className="text-xs text-gray-500 font-sans mt-0.5 mb-4">Define target pots for vacation, equipment or down payments</p>
+        <h3 className="text-base font-display font-semibold text-gray-800">Set Savings Goals</h3>
+        <p className="text-xs text-gray-500 font-sans mt-0.5 mb-4">Save money for a vacation, new equipment, or other big plans.</p>
 
         <form onSubmit={handleSubmitGoal} className="space-y-4">
           <div>
-            <label className="block text-xs font-bold text-gray-400 tracking-wider uppercase mb-1">Goal Destination Name</label>
+            <label className="block text-xs font-bold text-gray-400 tracking-wider uppercase mb-1">Goal Name</label>
             <input
               type="text"
               placeholder="e.g. New Mac Studio, Trip to Japan"
@@ -67,19 +73,22 @@ export default function FinancialGoalsManager({
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-gray-400 tracking-wider uppercase mb-1">Target Capital ($ USD)</label>
+            <label className="block text-xs font-bold text-gray-400 tracking-wider uppercase mb-1">
+              Target Amount ({currency.symbol} {currency.code})
+            </label>
             <input
               type="number"
+              step="any"
               placeholder="e.g. 2400"
               required
               value={targetAmount}
               onChange={(e) => setTargetAmount(e.target.value)}
-              className="w-full text-xs py-2.5 px-3.5 bg-gray-50/50 border border-gray-100 focus:outline-hidden focus:border-emerald-600 focus:bg-white rounded-xl"
+              className="w-full text-xs py-2.5 px-3.5 bg-gray-50/50 border border-gray-100 focus:outline-hidden focus:border-emerald-600 focus:bg-white rounded-xl font-mono"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-gray-400 tracking-wider uppercase mb-1">Target Deadline (Optional)</label>
+            <label className="block text-xs font-bold text-gray-400 tracking-wider uppercase mb-1">Target Date (Optional)</label>
             <input
               type="date"
               value={deadline}
@@ -92,7 +101,7 @@ export default function FinancialGoalsManager({
             type="submit"
             className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-display font-medium flex items-center justify-center gap-1.5 shadow-xs transition"
           >
-            <Plus className="w-3.5 h-3.5" /> Initialize Saving Goal
+            <Plus className="w-3.5 h-3.5" /> Save Goal
           </button>
         </form>
       </div>
@@ -100,15 +109,15 @@ export default function FinancialGoalsManager({
       {/* Col 2: Goals Visualizers */}
       <div className="bg-white p-5 border border-gray-100 rounded-2xl shadow-xs lg:col-span-2 space-y-5">
         <div>
-          <h3 className="text-base font-display font-semibold text-gray-800">Active Capital Objectives</h3>
-          <p className="text-xs text-gray-500 font-sans mt-0.5">Visualize saving milestones and allocate cash pools</p>
+          <h3 className="text-base font-display font-semibold text-gray-800">My Goals</h3>
+          <p className="text-xs text-gray-500 font-sans mt-0.5">Track your saving progress and add money to your goals.</p>
         </div>
 
         {goals.length === 0 ? (
           <div className="py-12 border border-dashed border-gray-100 rounded-2xl text-center text-gray-400 text-xs font-sans flex flex-col items-center justify-center">
             <Target className="w-8 h-8 text-emerald-100 mb-1" />
-            <p className="font-semibold text-gray-600">No active savings objectives</p>
-            <p className="text-[11px] max-w-xs mt-0.5">Use the objective planner to declare goal target pots.</p>
+            <p className="font-semibold text-gray-600">No savings goals set up yet.</p>
+            <p className="text-[11px] max-w-xs mt-0.5">Use the form on the left to add your first savings goal.</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -136,15 +145,15 @@ export default function FinancialGoalsManager({
                     {/* Deadline details */}
                     {g.deadline && (
                       <p className="text-[10px] text-gray-400 font-sans mb-3">
-                        Target deadline: {new Date(g.deadline).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}
+                        Target date: {new Date(g.deadline).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}
                       </p>
                     )}
 
                     {/* Metrics values */}
-                    <div className="flex justify-between text-xs mb-1 fonts-bold text-gray-600 font-sans">
-                      <span>Fund progress:</span>
-                      <span className="font-semibold text-gray-800">
-                        ${g.currentAmount.toLocaleString()} / ${g.targetAmount.toLocaleString()} ({ratio.toFixed(0)}%)
+                    <div className="flex justify-between text-xs mb-1 font-bold text-gray-600 font-sans">
+                      <span>Saved so far:</span>
+                      <span className="font-semibold text-gray-800 font-mono">
+                        {formatRaw(g.currentAmount, 0)} / {formatRaw(g.targetAmount, 0)} ({ratio.toFixed(0)}%)
                       </span>
                     </div>
 
@@ -164,16 +173,17 @@ export default function FinancialGoalsManager({
                     <div className="flex items-center gap-2">
                       <input
                         type="number"
-                        placeholder="Amount to deposit"
+                        step="any"
+                        placeholder={`Add amount (${currency.symbol})`}
                         value={depositAmount[g.id] || ''}
                         onChange={(e) => setDepositAmount(prev => ({ ...prev, [g.id]: e.target.value }))}
-                        className="w-full text-xs px-2.5 py-1.5 bg-white border border-gray-100 rounded-lg focus:outline-hidden"
+                        className="w-full text-xs px-2.5 py-1.5 bg-white border border-gray-100 rounded-lg focus:outline-hidden font-mono"
                       />
                       <button
                         onClick={() => handleDepositSubmit(g.id)}
-                        className="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[11px] font-sans font-medium hover:scale-105 transition shrink-0"
+                        className="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[11px] font-sans font-medium hover:scale-105 transition shrink-0 cursor-pointer"
                       >
-                        Deposit
+                        Add
                       </button>
                     </div>
                   </div>

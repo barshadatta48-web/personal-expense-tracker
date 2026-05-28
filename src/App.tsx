@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Transaction, Budget, FinancialGoal } from './types';
+import { useCurrency, CURRENCIES } from './contexts/CurrencyContext';
 import UserDashboard from './components/UserDashboard';
 import AnalyticsDashboard from './components/AnalyticsDashboard';
 import TransactionForm from './components/TransactionForm';
@@ -16,12 +17,12 @@ import {
   Target, 
   PiggyBank, 
   Sparkles, 
-  Github, 
-  RefreshCw 
+  Github 
 } from 'lucide-react';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<'dashboard' | 'analytics' | 'transactions' | 'budgets' | 'goals' | 'advisor'>('dashboard');
+  const { currency, setCurrencyByCode } = useCurrency();
 
   // Load state from local storage or declare default empty state (No fallback demo data)
   const [transactions, setTransactions] = useState<Transaction[]>(() => {
@@ -121,42 +122,6 @@ export default function App() {
     setGoals((prev) => prev.filter((g) => g.id !== id));
   };
 
-  // Set beautiful simulated sandbox data to demonstrate capabilities on click
-  const prefillSampleData = () => {
-    const today = new Date();
-    const formatOffsetDate = (offsetDays: number) => {
-      const d = new Date();
-      d.setDate(today.getDate() - offsetDays);
-      return d.toISOString().split('T')[0];
-    };
-
-    const dummyTxs: Transaction[] = [
-      // Salary / Income
-      { id: 'tx-s-1', amount: 4800, date: formatOffsetDate(25), description: 'Bi-weekly Corporate salary deposit', category: 'Salary & Wages', type: 'income', notes: 'Electronic transfer' },
-      { id: 'tx-s-2', amount: 350, date: formatOffsetDate(21), description: 'Mobile App Freelance contract', category: 'Freelance & Consulting', type: 'income', tags: ['freelance', 'tech'] },
-      { id: 'tx-s-3', amount: 95, date: formatOffsetDate(18), description: 'Stock Dividend reinvest', category: 'Investments & Dividends', type: 'income' },
-      { id: 'tx-s-4', amount: 4800, date: formatOffsetDate(11), description: 'Bi-weekly Corporate salary deposit', category: 'Salary & Wages', type: 'income', notes: 'Electronic transfer' },
-      { id: 'tx-s-5', amount: 150, date: formatOffsetDate(5), description: 'Design assets freelance payout', category: 'Freelance & Consulting', type: 'income' },
-
-      // Expenses
-      { id: 'tx-e-1', amount: 1650, date: formatOffsetDate(27), description: 'Apartment monthly rent', category: 'Housing & Rent', type: 'expense', notes: 'Auto-debit setup' },
-      { id: 'tx-e-2', amount: 84.50, date: formatOffsetDate(24), description: 'Whole Foods Market grocery haul', category: 'Food & Beverage', type: 'expense', tags: ['weekly-groceries'] },
-      { id: 'tx-e-3', amount: 15.99, date: formatOffsetDate(22), description: 'Spotify Premium music', category: 'Utilities & Bills', type: 'expense' },
-      { id: 'tx-e-4', amount: 45.20, date: formatOffsetDate(20), description: 'Gas station fuel fill-up', category: 'Transportation', type: 'expense' },
-      { id: 'tx-e-5', amount: 120.30, date: formatOffsetDate(19), description: 'Nike air sneakers', category: 'Shopping', type: 'expense', tags: ['apparel'] },
-      { id: 'tx-e-6', amount: 28.40, date: formatOffsetDate(16), description: 'Ramen dining with colleagues', category: 'Food & Beverage', type: 'expense', tags: ['dinner'] },
-      { id: 'tx-e-7', amount: 110, date: formatOffsetDate(14), description: 'Household electricity & internet bill', category: 'Utilities & Bills', type: 'expense', notes: 'Comcast and PG&E' },
-      { id: 'tx-e-8', amount: 75.00, date: formatOffsetDate(12), description: 'Barbecue Grill party catering', category: 'Entertainment & Leisure', type: 'expense' },
-      { id: 'tx-e-9', amount: 35.50, date: formatOffsetDate(9), description: 'Local Ride Uber', category: 'Transportation', type: 'expense' },
-      { id: 'tx-e-10', amount: 43.10, date: formatOffsetDate(7), description: 'Amazon basic Kindle accessories', category: 'Shopping', type: 'expense' },
-      { id: 'tx-e-11', amount: 65, date: formatOffsetDate(4), description: 'Movie theater tickets & snack box', category: 'Entertainment & Leisure', type: 'expense', tags: ['weekend'] },
-      { id: 'tx-e-12', amount: 92.40, date: formatOffsetDate(2), description: 'Bistro restaurant wine reservation', category: 'Food & Beverage', type: 'expense', tags: ['anniversary'] },
-      { id: 'tx-e-13', amount: 1500, date: formatOffsetDate(1), description: 'Vanguard core index tracking fund ETF buy', category: 'Investments & Dividends', type: 'expense', notes: 'Automated deposit allocation' }
-    ];
-
-    setTransactions(dummyTxs);
-  };
-
   return (
     <div className="min-h-screen bg-slate-50/50 text-gray-800 antialiased font-sans flex flex-col justify-between">
       {/* 1. Global Navigation Top Header */}
@@ -169,28 +134,37 @@ export default function App() {
             <h1 className="text-lg font-display font-bold text-gray-900 tracking-tight flex items-center gap-1.5">
               Personal Expense Tracker
             </h1>
-            <p className="text-[10px] uppercase font-bold text-gray-400 tracking-wider">Secure Native Sandbox Ledger</p>
+            <p className="text-[10px] uppercase font-bold text-gray-400 tracking-wider">Track your daily income & expenses</p>
           </div>
         </div>
 
-        {/* Global prefill sandbox data btn */}
-        <div className="flex items-center gap-3">
-          {transactions.length === 0 && (
-            <button
-              onClick={prefillSampleData}
-              title="Add sandbox seed records"
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 font-sans font-semibold text-xs rounded-xl transition duration-150"
-            >
-              <RefreshCw className="w-3.5 h-3.5" /> Prefill Sandboxed Core
-            </button>
-          )}
+        {/* Global Controls & Currency Switcher pill bar */}
+        <div className="flex items-center gap-3 md:gap-4 shrink-0">
+          <div className="flex items-center bg-slate-100 p-1 rounded-xl gap-0.5" id="currency-switcher">
+            {CURRENCIES.map((c) => (
+              <button
+                key={c.code}
+                id={`currency-btn-${c.code.toLowerCase()}`}
+                onClick={() => setCurrencyByCode(c.code)}
+                title={c.label}
+                className={`px-2.5 py-1 text-[10px] sm:text-[11px] font-bold rounded-lg font-mono transition-all uppercase cursor-pointer ${
+                  currency.code === c.code
+                    ? 'bg-white text-emerald-700 shadow-2xs border border-gray-200/40'
+                    : 'text-gray-400 hover:text-gray-700'
+                }`}
+              >
+                <span>{c.symbol}</span> <span className="hidden sm:inline">{c.code}</span>
+              </button>
+            ))}
+          </div>
+
           <span className="text-slate-300 font-sans hidden sm:inline text-xs">| Connected</span>
         </div>
       </header>
 
       {/* 2. Main Tab View Layout container */}
       <main className="flex-1 w-full max-w-7xl mx-auto px-4 md:px-6 py-6 space-y-6">
-        {/* Navigation Selector Tabs row */}
+         {/* Navigation Selector Tabs row */}
         <div className="flex items-center gap-1 overflow-x-auto border-b border-gray-100 pb-1.5 shrink-0">
           <button
             onClick={() => setActiveTab('dashboard')}
@@ -201,7 +175,7 @@ export default function App() {
             }`}
           >
             <Wallet className="w-4 h-4 shrink-0" />
-            <span>User Dashboard</span>
+            <span>Dashboard</span>
           </button>
 
           <button
@@ -213,7 +187,7 @@ export default function App() {
             }`}
           >
             <BarChart3 className="w-4 h-4 shrink-0" />
-            <span>Analytics & Charts</span>
+            <span>Charts</span>
           </button>
 
           <button
@@ -225,7 +199,7 @@ export default function App() {
             }`}
           >
             <ListOrdered className="w-4 h-4 shrink-0" />
-            <span>Transactions Ledger</span>
+            <span>Transactions</span>
           </button>
 
           <button
@@ -237,7 +211,7 @@ export default function App() {
             }`}
           >
             <PiggyBank className="w-4 h-4 shrink-0" />
-            <span>Spend Budgets</span>
+            <span>Budgets</span>
           </button>
 
           <button
@@ -261,7 +235,7 @@ export default function App() {
             }`}
           >
             <Sparkles className="w-4 h-4 text-emerald-500 animate-pulse shrink-0" />
-            <span>AI Financial Advisor</span>
+            <span>AI Advisor</span>
           </button>
         </div>
 
@@ -280,7 +254,6 @@ export default function App() {
           {activeTab === 'analytics' && (
             <AnalyticsDashboard 
               transactions={transactions} 
-              onAddSampleData={prefillSampleData} 
             />
           )}
 
@@ -289,8 +262,8 @@ export default function App() {
               <div className="lg:col-span-1">
                 <div className="sticky top-24 space-y-4">
                   <div className="bg-emerald-600 text-white p-5 rounded-2xl shadow-xs">
-                    <h3 className="text-sm font-bold tracking-wide uppercase font-sans mb-1.5 opacity-90">Quick Action Summary</h3>
-                    <p className="text-xs leading-relaxed opacity-85">Record a transaction manually or toggle the AI Quick-Paste scanner above the form to translate invoices in seconds.</p>
+                    <h3 className="text-sm font-bold tracking-wide uppercase font-sans mb-1.5 opacity-90">Quick Summary</h3>
+                    <p className="text-xs leading-relaxed opacity-85">Type in your transaction manually or use the AI text scanner to write or paste details in a single sentence.</p>
                   </div>
                   <TransactionForm onAddTransaction={handleAddTransaction} />
                 </div>
@@ -337,12 +310,12 @@ export default function App() {
       <footer className="w-full bg-white border-t border-gray-100 py-6 px-6 mt-12">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-gray-400 font-sans">
           <div className="flex items-center gap-1.5">
-            <span className="font-bold text-gray-500 uppercase tracking-widest text-[10px]">Secure Ledger</span>
+            <span className="font-bold text-gray-500 uppercase tracking-widest text-[10px]">Secure Tracker</span>
             <span>•</span>
-            <span>Isolated local client storage for financial logs privacy protection.</span>
+            <span>Your data is saved directly on your device.</span>
           </div>
           <div className="flex items-center gap-3">
-            <span>Powered by Gemini 3.5 Flash Cognitive Services</span>
+            <span>Powered by Gemini AI</span>
           </div>
         </div>
       </footer>

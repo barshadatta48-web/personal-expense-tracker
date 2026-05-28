@@ -1,14 +1,15 @@
 import React, { useState, useMemo } from 'react';
+import { useCurrency } from '../contexts/CurrencyContext';
 import { Transaction, CATEGORY_COLORS } from '../types';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, PieChart, Pie, Cell, BarChart, Bar, Legend } from 'recharts';
-import { TrendingUp, TrendingDown, DollarSign, Percent, Calendar, RefreshCw } from 'lucide-react';
+import { TrendingUp, TrendingDown, DollarSign, Percent, Calendar } from 'lucide-react';
 
 interface AnalyticsDashboardProps {
   transactions: Transaction[];
-  onAddSampleData: () => void;
 }
 
-export default function AnalyticsDashboard({ transactions, onAddSampleData }: AnalyticsDashboardProps) {
+export default function AnalyticsDashboard({ transactions }: AnalyticsDashboardProps) {
+  const { currency, formatRaw, toActiveCurrency } = useCurrency();
   const [dateRange, setDateRange] = useState<'this-month' | 'last-30' | 'this-year' | 'all'>('all');
 
   // Filter transactions based on selected date range
@@ -37,7 +38,7 @@ export default function AnalyticsDashboard({ transactions, onAddSampleData }: An
     });
   }, [transactions, dateRange]);
 
-  // Compute stats
+  // Compute stats in base USD (formatted to active currency in presentation tier)
   const stats = useMemo(() => {
     let income = 0;
     let expenses = 0;
@@ -58,7 +59,7 @@ export default function AnalyticsDashboard({ transactions, onAddSampleData }: An
 
     const pieData = Object.entries(categoryMap).map(([name, value]) => ({
       name,
-      value
+      value: Number(toActiveCurrency(value).toFixed(2))
     })).sort((a, b) => b.value - a.value);
 
     return {
@@ -68,9 +69,9 @@ export default function AnalyticsDashboard({ transactions, onAddSampleData }: An
       savingsRate,
       pieData
     };
-  }, [filteredTransactions]);
+  }, [filteredTransactions, toActiveCurrency]);
 
-  // Daily or Monthly Trend Data for Area Chart
+  // Daily or Monthly Trend Data for Area Chart (converted to active currency for appropriate graph labels)
   const trendData = useMemo(() => {
     // Group transactions by date
     const dateMap: Record<string, { income: number; expense: number; accumulated: number }> = {};
@@ -105,14 +106,14 @@ export default function AnalyticsDashboard({ transactions, onAddSampleData }: An
       return {
         date: formattedDate,
         rawDate: date,
-        Income: Number(values.income.toFixed(2)),
-        Expense: Number(values.expense.toFixed(2)),
-        Balance: Number(values.accumulated.toFixed(2))
+        Income: Number(toActiveCurrency(values.income).toFixed(2)),
+        Expense: Number(toActiveCurrency(values.expense).toFixed(2)),
+        Balance: Number(toActiveCurrency(values.accumulated).toFixed(2))
       };
     }).slice(-15); // Show latest 15 active days for clarity
-  }, [filteredTransactions]);
+  }, [filteredTransactions, toActiveCurrency]);
 
-  // Monthly Breakdown Bar Chart Data
+  // Monthly Breakdown Bar Chart Data (converted to active currency for appropriate graph labels)
   const monthlyData = useMemo(() => {
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     const monthlyMap: Record<number, { monthName: string; Income: number; Expense: number }> = {};
@@ -139,16 +140,20 @@ export default function AnalyticsDashboard({ transactions, onAddSampleData }: An
       }
     });
 
-    return Object.values(monthlyMap);
-  }, [transactions]);
+    return Object.values(monthlyMap).map((item) => ({
+      ...item,
+      Income: Number(toActiveCurrency(item.Income).toFixed(2)),
+      Expense: Number(toActiveCurrency(item.Expense).toFixed(2))
+    }));
+  }, [transactions, toActiveCurrency]);
 
   return (
     <div className="space-y-6">
       {/* Date filter Controls */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-4 bg-white border border-gray-100 rounded-2xl shadow-xs">
         <div>
-          <h2 className="text-xl font-display font-semibold text-gray-800">Financial Insights</h2>
-          <p className="text-xs text-gray-500 font-sans mt-0.5">Visually track your balance velocity and spending distribution</p>
+          <h2 className="text-xl font-display font-semibold text-gray-800">Charts & Analytics</h2>
+          <p className="text-xs text-gray-500 font-sans mt-0.5">See your income, spending trends, and category summaries.</p>
         </div>
         
         <div className="flex items-center gap-2 self-start sm:self-center">
@@ -176,17 +181,17 @@ export default function AnalyticsDashboard({ transactions, onAddSampleData }: An
         {/* Balance Card */}
         <div className="bg-white p-5 border border-gray-100 rounded-2xl shadow-xs flex flex-col justify-between hover:border-emerald-200 transition-colors">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-gray-400 tracking-wider uppercase font-sans">Net Cashflow</span>
+            <span className="text-xs font-bold text-gray-400 tracking-wider uppercase font-sans">Net Balance</span>
             <div className="p-2 rounded-xl bg-emerald-50 text-emerald-600">
               <DollarSign className="w-4 h-4" />
             </div>
           </div>
           <div className="mt-4">
-            <h3 className="text-2xl font-display font-bold text-gray-800">
-              {stats.net >= 0 ? '+' : ''}${stats.net.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            <h3 className="text-2xl font-display font-bold text-gray-800 font-mono">
+              {stats.net >= 0 ? '+' : ''}{formatRaw(stats.net)}
             </h3>
             <p className={`text-xs mt-1 font-medium ${stats.net >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
-              {stats.net >= 0 ? 'Surplus wealth generated' : 'Deficit spending alert'}
+              {stats.net >= 0 ? 'Saved this period' : 'Spent more than earned'}
             </p>
           </div>
         </div>
@@ -194,17 +199,17 @@ export default function AnalyticsDashboard({ transactions, onAddSampleData }: An
         {/* Total Income Card */}
         <div className="bg-white p-5 border border-gray-100 rounded-2xl shadow-xs flex flex-col justify-between hover:border-emerald-200 transition-colors">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-gray-400 tracking-wider uppercase font-sans">Total Inflow</span>
+            <span className="text-xs font-bold text-gray-400 tracking-wider uppercase font-sans">Total Income</span>
             <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-600">
               <TrendingUp className="w-4 h-4" />
             </div>
           </div>
           <div className="mt-4">
-            <h3 className="text-2xl font-display font-bold text-gray-800">
-              ${stats.income.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            <h3 className="text-2xl font-display font-bold text-gray-800 font-mono">
+              {formatRaw(stats.income)}
             </h3>
             <p className="text-xs text-gray-500 mt-1">
-              Active & residual income streams
+              All incoming money
             </p>
           </div>
         </div>
@@ -212,17 +217,17 @@ export default function AnalyticsDashboard({ transactions, onAddSampleData }: An
         {/* Total Expense Card */}
         <div className="bg-white p-5 border border-gray-100 rounded-2xl shadow-xs flex flex-col justify-between hover:border-rose-200 transition-colors">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-gray-400 tracking-wider uppercase font-sans">Total Outflow</span>
+            <span className="text-xs font-bold text-gray-400 tracking-wider uppercase font-sans">Total Spend</span>
             <div className="p-2 rounded-xl bg-rose-50 text-rose-600">
               <TrendingDown className="w-4 h-4" />
             </div>
           </div>
           <div className="mt-4">
-            <h3 className="text-2xl font-display font-bold text-gray-800">
-              ${stats.expenses.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            <h3 className="text-2xl font-display font-bold text-gray-800 font-mono">
+              {formatRaw(stats.expenses)}
             </h3>
             <p className="text-xs text-gray-500 mt-1">
-              Category-based cash outflows
+              All outgoing money
             </p>
           </div>
         </div>
@@ -230,7 +235,7 @@ export default function AnalyticsDashboard({ transactions, onAddSampleData }: An
         {/* Savings Rate Card */}
         <div className="bg-white p-5 border border-gray-100 rounded-2xl shadow-xs flex flex-col justify-between hover:border-emerald-200 transition-colors">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-gray-400 tracking-wider uppercase font-sans">Savings Efficiency</span>
+            <span className="text-xs font-bold text-gray-400 tracking-wider uppercase font-sans">Savings Rate</span>
             <div className="p-2 rounded-xl bg-teal-50 text-teal-600">
               <Percent className="w-4 h-4" />
             </div>
@@ -246,7 +251,7 @@ export default function AnalyticsDashboard({ transactions, onAddSampleData }: An
               />
             </div>
             <p className="text-xs text-gray-400 mt-1">
-              Target should be 20% or higher
+              Target: 20% or more
             </p>
           </div>
         </div>
@@ -258,22 +263,16 @@ export default function AnalyticsDashboard({ transactions, onAddSampleData }: An
             <DollarSign className="w-8 h-8" />
           </div>
           <h3 className="text-lg font-display font-semibold text-gray-800">No transactions recorded yet</h3>
-          <p className="text-sm text-gray-500 max-w-md mt-1 mb-6">
-            Add transactions manually, paste receipt details using natural language, or load high-quality sample details to experience the dashboards.
+          <p className="text-sm text-gray-500 max-w-md mt-1">
+            Add transactions manually or use the AI text scanner to populate your charts.
           </p>
-          <button
-            onClick={onAddSampleData}
-            className="inline-flex items-center gap-2 px-5 py-2.5 bg-emerald-600 text-white rounded-xl font-medium text-sm hover:bg-emerald-700 transition"
-          >
-            <RefreshCw className="w-4 h-4" /> Prefill Sandbox with Sample Data
-          </button>
         </div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Main Trend Line Chart */}
           <div className="bg-white p-5 border border-gray-100 rounded-2xl shadow-xs lg:col-span-2">
             <div className="flex justify-between items-center mb-4">
-              <h3 className="text-base font-display font-bold text-gray-800">Balance Velocity Trend</h3>
+              <h3 className="text-base font-display font-bold text-gray-800">Balance Trend over Time</h3>
               <span className="text-xs font-mono text-gray-400">Latest active dates</span>
             </div>
             
@@ -290,6 +289,7 @@ export default function AnalyticsDashboard({ transactions, onAddSampleData }: An
                     <XAxis dataKey="date" stroke="#94a3b8" fontSize={11} tickLine={false} axisLine={false} />
                     <YAxis stroke="#94a3b8" fontSize={11} tickLine={false} axisLine={false} />
                     <Tooltip 
+                      formatter={(val: number) => [`${currency.symbol}${val.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, 'Balance']}
                       contentStyle={{ backgroundColor: '#1e293b', borderRadius: '12px', border: 'none', color: '#fff' }}
                       labelStyle={{ fontWeight: 'bold' }}
                     />
@@ -298,7 +298,7 @@ export default function AnalyticsDashboard({ transactions, onAddSampleData }: An
                 </ResponsiveContainer>
               ) : (
                 <div className="h-full flex items-center justify-center text-gray-400 text-sm">
-                  Insufficient sequential data to chart trend line
+                  Not enough data to draw the trend line yet.
                 </div>
               )}
             </div>
@@ -306,7 +306,7 @@ export default function AnalyticsDashboard({ transactions, onAddSampleData }: An
 
           {/* Allocation Breakdown Pie Chart */}
           <div className="bg-white p-5 border border-gray-100 rounded-2xl shadow-xs">
-            <h3 className="text-base font-display font-bold text-gray-800 mb-4">Expense Allocation</h3>
+            <h3 className="text-base font-display font-bold text-gray-800 mb-4">Spend by Category</h3>
             
             <div className="w-full h-56 flex justify-center items-center">
               {stats.pieData.length > 0 ? (
@@ -326,13 +326,13 @@ export default function AnalyticsDashboard({ transactions, onAddSampleData }: An
                       ))}
                     </Pie>
                     <Tooltip
-                      formatter={(val: number) => [`$${val.toFixed(2)}`, 'Spent']}
+                      formatter={(val: number) => [`${currency.symbol}${val.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, 'Spent']}
                       contentStyle={{ backgroundColor: '#1e293b', borderRadius: '12px', border: 'none', color: '#fff' }}
                     />
                   </PieChart>
                 </ResponsiveContainer>
               ) : (
-                <div className="text-gray-400 text-sm">No expenses detected in specified range</div>
+                <div className="text-gray-400 text-sm">No expenses recorded in this period.</div>
               )}
             </div>
             
@@ -344,7 +344,7 @@ export default function AnalyticsDashboard({ transactions, onAddSampleData }: An
                     <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: CATEGORY_COLORS[entry.name] }} />
                     <span className="truncate text-gray-600">{entry.name}</span>
                   </div>
-                  <span className="font-semibold text-gray-800 shrink-0">${entry.value.toFixed(2)}</span>
+                  <span className="font-semibold text-gray-800 shrink-0 font-mono">{currency.symbol}{entry.value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                 </div>
               ))}
               {stats.pieData.length > 5 && (
@@ -357,13 +357,14 @@ export default function AnalyticsDashboard({ transactions, onAddSampleData }: An
 
           {/* Monthly Comparison Bar Chart */}
           <div className="bg-white p-5 border border-gray-100 rounded-2xl shadow-xs lg:col-span-3">
-            <h3 className="text-base font-display font-bold text-gray-800 mb-4">Annual Calendar Direct Comparison</h3>
+            <h3 className="text-base font-display font-bold text-gray-800 mb-4">Income vs Expenses by Month</h3>
             <div className="w-full h-64">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={monthlyData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
                   <XAxis dataKey="monthName" stroke="#94a3b8" fontSize={11} tickLine={false} axisLine={false} />
                   <YAxis stroke="#94a3b8" fontSize={11} tickLine={false} axisLine={false} />
                   <Tooltip 
+                    formatter={(val: number) => [`${currency.symbol}${val.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, '']}
                     contentStyle={{ backgroundColor: '#1e293b', borderRadius: '12px', border: 'none', color: '#fff' }}
                   />
                   <Legend verticalAlign="top" height={36} iconType="circle" iconSize={8} />

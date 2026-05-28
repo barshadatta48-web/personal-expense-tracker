@@ -1,19 +1,16 @@
 import React, { useState } from 'react';
 import { Transaction, CATEGORIES, QuickTemplate } from '../types';
+import { useCurrency } from '../contexts/CurrencyContext';
 import { Plus, Sparkles, AlertCircle, CheckCircle, ArrowDownLeft, ArrowUpRight, Loader2, Zap, BookmarkPlus, X } from 'lucide-react';
 
-const DEFAULT_TEMPLATES: QuickTemplate[] = [
-  { id: 't-1', label: '☕ Starbucks Run', amount: 4.75, description: 'Starbucks coffee run', type: 'expense', category: 'Food & Beverage', tags: ['coffee', 'daily'] },
-  { id: 't-2', label: '🏠 Apartment Rent', amount: 1650.00, description: 'Apartment monthly rent lease wire', type: 'expense', category: 'Housing & Rent', notes: 'Automated transfer' },
-  { id: 't-3', label: '🛒 Weekly Groceries', amount: 85.00, description: 'Whole Foods grocery stock', type: 'expense', category: 'Food & Beverage', tags: ['groceries'] },
-  { id: 't-4', label: '💼 Freelance Contract', amount: 350.00, description: 'Design asset commission deposit', type: 'income', category: 'Freelance & Consulting' }
-];
+const DEFAULT_TEMPLATES: QuickTemplate[] = [];
 
 interface TransactionFormProps {
   onAddTransaction: (transaction: Omit<Transaction, 'id'>) => void;
 }
 
 export default function TransactionForm({ onAddTransaction }: TransactionFormProps) {
+  const { currency, formatRaw, toActiveCurrency, fromActiveCurrency } = useCurrency();
   const [activeTab, setActiveTab] = useState<'manual' | 'ai'>('manual');
   
   // Quick templates list state initialized from localstorage or defaults
@@ -46,13 +43,17 @@ export default function TransactionForm({ onAddTransaction }: TransactionFormPro
   };
 
   const applyTemplate = (tpl: QuickTemplate) => {
-    setAmount(tpl.amount.toString());
+    const activeAmt = toActiveCurrency(tpl.amount);
+    
+    // Display with appropriate decimal formatting for the field
+    const decDigits = currency.code === 'JPY' ? 0 : 2;
+    setAmount(activeAmt.toFixed(decDigits));
     setDescription(tpl.description);
     setType(tpl.type);
     setCategory(tpl.category);
     setNotes(tpl.notes || '');
     setTagInput(tpl.tags ? tpl.tags.join(', ') : '');
-    setAiSuccessMessage(`Pre-filled matching template fields for "${tpl.label}"!`);
+    setAiSuccessMessage(`Pre-filled matching template fields for "${tpl.label}" in ${currency.code}!`);
   };
 
   const handleCreateTemplate = (e: React.FormEvent) => {
@@ -76,10 +77,13 @@ export default function TransactionForm({ onAddTransaction }: TransactionFormPro
       .map(t => t.trim())
       .filter(t => t.length > 0);
 
+    // Save as base USD in the database
+    const amtNumInUSD = fromActiveCurrency(amtNum);
+
     const newTpl: QuickTemplate = {
       id: 'template-' + Date.now(),
       label: newTemplateLabel.trim(),
-      amount: amtNum,
+      amount: amtNumInUSD,
       description: description.trim(),
       type,
       category,
@@ -124,8 +128,11 @@ export default function TransactionForm({ onAddTransaction }: TransactionFormPro
       .map(t => t.trim())
       .filter(t => t.length > 0);
 
+    // Convert input active currency amount to USD Base
+    const amtNumInUSD = fromActiveCurrency(amtNum);
+
     onAddTransaction({
-      amount: amtNum,
+      amount: amtNumInUSD,
       description: description.trim(),
       type,
       category,
@@ -173,7 +180,13 @@ export default function TransactionForm({ onAddTransaction }: TransactionFormPro
       const data = await response.json();
       
       // Map API outputs directly back to form controls so user can edit instantly
-      if (data.amount) setAmount(data.amount.toString());
+      if (data.amount) {
+        // AI parse outputs USD base by default since it knows the base app prompt.
+        // Let's convert it to the user's active currency!
+        const activeAmt = toActiveCurrency(Number(data.amount));
+        const decDigits = currency.code === 'JPY' ? 0 : 2;
+        setAmount(activeAmt.toFixed(decDigits));
+      }
       if (data.description) setDescription(data.description);
       if (data.type) {
         const correctType = data.type === 'income' ? 'income' : 'expense';
@@ -188,7 +201,7 @@ export default function TransactionForm({ onAddTransaction }: TransactionFormPro
       if (data.notes) setNotes(data.notes);
       if (Array.isArray(data.tags)) setTagInput(data.tags.join(', '));
 
-      setAiSuccessMessage("Transaction successfully parsed by AI! Review below and click 'Record Transaction'.");
+      setAiSuccessMessage(`Transaction successfully parsed by AI! Converted base parameters to local ${currency.code}. Review below and click 'Record Transaction'.`);
       setActiveTab('manual'); // Bring them back to review
     } catch (error: any) {
       console.error(error);
@@ -210,7 +223,7 @@ export default function TransactionForm({ onAddTransaction }: TransactionFormPro
               : 'border-transparent text-gray-500 hover:text-gray-900 hover:bg-gray-100/50'
           }`}
         >
-          Manual Data Input
+          Manual Input
         </button>
         <button
           onClick={() => setActiveTab('ai')}
@@ -221,7 +234,7 @@ export default function TransactionForm({ onAddTransaction }: TransactionFormPro
           }`}
         >
           <Sparkles className="w-4 h-4 text-emerald-500 shrink-0" />
-          AI Smart Scanner
+          AI Scanner
         </button>
       </div>
 
@@ -241,7 +254,7 @@ export default function TransactionForm({ onAddTransaction }: TransactionFormPro
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-1.5 text-xs font-bold text-gray-500 uppercase tracking-wider font-sans">
                   <Zap className="w-3.5 h-3.5 text-amber-500 shrink-0" />
-                  <span>⚡ Quick Templates</span>
+                  <span>⚡ Templates</span>
                 </div>
                 <button
                   type="button"
@@ -249,15 +262,15 @@ export default function TransactionForm({ onAddTransaction }: TransactionFormPro
                   className="text-[11px] font-bold text-emerald-600 hover:text-emerald-700 transition flex items-center gap-0.5"
                 >
                   <BookmarkPlus className="w-3.5 h-3.5 shrink-0" />
-                  <span>{isCreatingTemplate ? 'Cancel Save' : 'Keep Current inputs as template'}</span>
+                  <span>{isCreatingTemplate ? 'Cancel Save' : 'Save current form as a template'}</span>
                 </button>
               </div>
 
               {/* Save template inline form panel */}
               {isCreatingTemplate && (
-                <div className="p-3 bg-white border border-gray-100/80 rounded-xl space-y-2.5 shadow-2xs">
-                  <p className="text-[10px] text-gray-400 font-sans">
-                    Pre-fill all details below (amount, description, flow type etc), then save it with a short mnemonic label.
+                <div className="p-3 bg-white border border-gray-100/80 rounded-xl space-y-2.5 shadow-2xs font-sans">
+                  <p className="text-[10px] text-gray-400">
+                    To save a template, fill out the form details below first, then give it a name.
                   </p>
                   <div className="flex gap-2">
                     <input
@@ -291,7 +304,7 @@ export default function TransactionForm({ onAddTransaction }: TransactionFormPro
                       className="group relative cursor-pointer flex items-center gap-1.5 px-2.5 py-1.5 bg-white border border-gray-100 hover:border-emerald-200 hover:bg-emerald-50/15 active:scale-95 text-xs text-gray-700 font-semibold rounded-xl transition duration-150 shrink-0 shadow-2xs font-sans"
                     >
                       <span>{tpl.label}</span>
-                      <span className="text-[10px] text-slate-400 font-mono font-medium">${tpl.amount.toFixed(0)}</span>
+                      <span className="text-[10px] text-slate-400 font-mono font-medium">{formatRaw(tpl.amount, 0)}</span>
                       
                       {/* One-click record instantly action inside template bubble */}
                       <button
@@ -299,7 +312,7 @@ export default function TransactionForm({ onAddTransaction }: TransactionFormPro
                         onClick={(e) => {
                           e.stopPropagation();
                           onAddTransaction({
-                            amount: tpl.amount,
+                            amount: tpl.amount, // already USD base
                             description: tpl.description,
                             type: tpl.type,
                             category: tpl.category,
@@ -332,7 +345,7 @@ export default function TransactionForm({ onAddTransaction }: TransactionFormPro
 
             {/* Type Switcher */}
             <div>
-              <label className="block text-xs font-bold text-gray-400 tracking-wider uppercase mb-1.5">Transaction Flow</label>
+              <label className="block text-xs font-bold text-gray-400 tracking-wider uppercase mb-1.5 font-sans">Type</label>
               <div className="grid grid-cols-2 gap-2">
                 <button
                   type="button"
@@ -343,7 +356,7 @@ export default function TransactionForm({ onAddTransaction }: TransactionFormPro
                       : 'bg-white border-gray-100 text-gray-500 hover:bg-gray-50'
                   }`}
                 >
-                  <ArrowDownLeft className="w-4 h-4" /> Expense Out
+                  <ArrowDownLeft className="w-4 h-4 text-rose-500" /> Expense
                 </button>
                 <button
                   type="button"
@@ -354,7 +367,7 @@ export default function TransactionForm({ onAddTransaction }: TransactionFormPro
                       : 'bg-white border-gray-100 text-gray-500 hover:bg-gray-50'
                   }`}
                 >
-                  <ArrowUpRight className="w-4 h-4" /> Income In
+                  <ArrowUpRight className="w-4 h-4 text-emerald-500" /> Income
                 </button>
               </div>
             </div>
@@ -362,21 +375,23 @@ export default function TransactionForm({ onAddTransaction }: TransactionFormPro
             {/* Amount and Date */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-bold text-gray-400 tracking-wider uppercase mb-1">Amount ($ USD)</label>
+                <label className="block text-xs font-bold text-gray-400 tracking-wider uppercase mb-1 font-sans">
+                  Amount ({currency.symbol} {currency.code})
+                </label>
                 <input
                   type="number"
-                  step="0.01"
+                  step="any"
                   min="0"
                   placeholder="0.00"
                   required
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
-                  className="w-full text-sm py-2.5 px-3.5 bg-gray-50/50 border border-gray-100 focus:border-emerald-600 focus:bg-white rounded-xl focus:outline-hidden transition"
+                  className="w-full text-sm py-2.5 px-3.5 bg-gray-50/50 border border-gray-100 focus:border-emerald-600 focus:bg-white rounded-xl focus:outline-hidden transition font-mono"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-gray-400 tracking-wider uppercase mb-1">Transaction Date</label>
+                <label className="block text-xs font-bold text-gray-400 tracking-wider uppercase mb-1 font-sans">Date</label>
                 <input
                   type="date"
                   required
@@ -390,7 +405,7 @@ export default function TransactionForm({ onAddTransaction }: TransactionFormPro
             {/* Description & Category */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-bold text-gray-400 tracking-wider uppercase mb-1">Description</label>
+                <label className="block text-xs font-bold text-gray-400 tracking-wider uppercase mb-1 font-sans">Description</label>
                 <input
                   type="text"
                   placeholder="e.g. Starbucks, Client Wire, Rent payment"
@@ -402,7 +417,7 @@ export default function TransactionForm({ onAddTransaction }: TransactionFormPro
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-gray-400 tracking-wider uppercase mb-1">Taxonomy Category</label>
+                <label className="block text-xs font-bold text-gray-400 tracking-wider uppercase mb-1 font-sans">Category</label>
                 <select
                   value={category}
                   onChange={(e) => setCategory(e.target.value)}
@@ -420,10 +435,10 @@ export default function TransactionForm({ onAddTransaction }: TransactionFormPro
             {/* Notes & Tags Input */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-bold text-gray-400 tracking-wider uppercase mb-1">Tags (Comma-separated)</label>
+                <label className="block text-xs font-bold text-gray-400 tracking-wider uppercase mb-1 font-sans">Tags (separate with commas)</label>
                 <input
                   type="text"
-                  placeholder="e.g. dining, monthly-bills, business"
+                  placeholder="e.g. dining, bills, travel"
                   value={tagInput}
                   onChange={(e) => setTagInput(e.target.value)}
                   className="w-full text-sm py-2.5 px-3.5 bg-gray-50/50 border border-gray-100 focus:border-emerald-600 focus:bg-white rounded-xl focus:outline-hidden transition"
@@ -431,10 +446,10 @@ export default function TransactionForm({ onAddTransaction }: TransactionFormPro
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-gray-400 tracking-wider uppercase mb-1">Notes / Reminders (Optional)</label>
+                <label className="block text-xs font-bold text-gray-400 tracking-wider uppercase mb-1 font-sans">Notes (Optional)</label>
                 <input
                   type="text"
-                  placeholder="e.g. Split with Sarah, personal reimbursement"
+                  placeholder="e.g. Split with Sarah"
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
                   className="w-full text-sm py-2.5 px-3.5 bg-gray-50/50 border border-gray-100 focus:border-emerald-600 focus:bg-white rounded-xl focus:outline-hidden transition"
@@ -447,27 +462,27 @@ export default function TransactionForm({ onAddTransaction }: TransactionFormPro
               type="submit"
               className="w-full py-3 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-display font-medium flex items-center justify-center gap-1.5 shadow-xs transition"
             >
-              <Plus className="w-4 h-4" /> Record Transaction
+              <Plus className="w-4 h-4" /> Add Transaction
             </button>
           </form>
         )}
 
         {/* TAB 2: AI COGNITIVE SCANNER */}
         {activeTab === 'ai' && (
-          <div className="space-y-4">
+          <div className="space-y-4 font-sans">
             <div className="bg-emerald-50/55 border border-emerald-100 p-4 rounded-xl text-xs space-y-1 text-emerald-800">
               <div className="font-bold flex items-center gap-1">
                 <Sparkles className="w-3.5 h-3.5 shrink-0" />
-                <span>Gemini Financial Parser Mode</span>
+                <span>AI Text Scanner</span>
               </div>
-              <p>Type or paste unstructured text details. This could be raw digital invoices, emails, or messages like <span className="italic font-mono bg-white px-1 border border-emerald-100 rounded">"Got $45 rebate from Costco yesterday"</span> or <span className="italic font-mono bg-white px-1 border border-emerald-100 rounded text-[11px]">"paid landlord 1850 rent today tagging home"</span>.</p>
+              <p>Write or paste any invoice text, receipt, or a simple sentence like: <span className="italic font-mono bg-white px-1 border border-emerald-100 rounded">"Spent $12 on lunch yesterday"</span> or <span className="italic font-mono bg-white px-1 border border-emerald-100 rounded text-[11px]">"paid $1500 for rent today"</span>.</p>
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-gray-400 tracking-wider uppercase mb-1">E-Receipt, Voice Text, or Sentence Details</label>
+              <label className="block text-xs font-bold text-gray-400 tracking-wider uppercase mb-1">Receipt text or simple sentence</label>
               <textarea
                 rows={5}
-                placeholder="Paste electronic invoice data here, or write descriptions..."
+                placeholder="Write details here (e.g. Spent 15 on movie tickets today)..."
                 value={aiText}
                 onChange={(e) => setAiText(e.target.value)}
                 className="w-full text-sm py-2.5 px-3.5 bg-gray-50/50 border border-gray-100 focus:border-emerald-600 focus:bg-white rounded-xl focus:outline-hidden transition"
@@ -485,17 +500,17 @@ export default function TransactionForm({ onAddTransaction }: TransactionFormPro
               type="button"
               disabled={isAiLoading}
               onClick={handleAiParse}
-              className="w-full py-3 px-4 bg-emerald-600 text-white rounded-xl text-sm font-semibold hover:bg-emerald-700 disabled:opacity-50 transition-all flex items-center justify-center gap-2 shadow-xs"
+              className="w-full py-3 px-4 bg-emerald-600 text-white rounded-xl text-sm font-semibold hover:bg-emerald-700 disabled:opacity-50 transition-all flex items-center justify-center gap-2 shadow-xs cursor-pointer"
             >
               {isAiLoading ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin shrink-0" />
-                  AI Gemini engine parsing unstructured text...
+                  AI is reading your text...
                 </>
               ) : (
                 <>
                   <Sparkles className="w-4 h-4 shrink-0 text-amber-200" />
-                  Analyze and Smart Map Details
+                  Find details with AI
                 </>
               )}
             </button>

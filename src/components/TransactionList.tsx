@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useRef } from 'react';
 import { Transaction, CATEGORIES } from '../types';
+import { useCurrency } from '../contexts/CurrencyContext';
 import { Search, Trash2, Edit, Download, Upload, Filter, ArrowUpRight, ArrowDownLeft, Calendar, Tag } from 'lucide-react';
 
 interface TransactionListProps {
@@ -15,6 +16,7 @@ export default function TransactionList({
   onUpdateTransaction,
   onImportTransactions
 }: TransactionListProps) {
+  const { currency, formatRaw, toActiveCurrency, fromActiveCurrency } = useCurrency();
   const [search, setSearch] = useState('');
   const [filterType, setFilterType] = useState<'all' | 'income' | 'expense'>('all');
   const [filterCategory, setFilterCategory] = useState('all');
@@ -130,7 +132,12 @@ export default function TransactionList({
   // Turn on inline editor
   const startEdit = (t: Transaction) => {
     setEditingId(t.id);
-    setEditAmount(t.amount.toString());
+    
+    // Load converted active value for the editor input
+    const activeVal = toActiveCurrency(t.amount);
+    const decDigits = currency.code === 'JPY' ? 0 : 2;
+    setEditAmount(activeVal.toFixed(decDigits));
+    
     setEditDesc(t.description);
     setEditCategory(t.category);
     setEditDate(t.date);
@@ -150,9 +157,12 @@ export default function TransactionList({
 
     const matched = transactions.find(t => t.id === id);
     if (matched) {
+      // Convert edited input amount from active currency back to USD Base
+      const usdAmount = fromActiveCurrency(amt);
+
       onUpdateTransaction({
         ...matched,
-        amount: amt,
+        amount: usdAmount,
         description: editDesc.trim(),
         category: editCategory,
         date: editDate
@@ -167,8 +177,8 @@ export default function TransactionList({
       {/* Title & Backup Controls */}
       <div className="p-5 border-b border-gray-100 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h3 className="text-base font-display font-semibold text-gray-800">Transaction Registry</h3>
-          <p className="text-xs text-gray-500 font-sans">Index of recorded cash balances, filters, and records backup</p>
+          <h3 className="text-base font-display font-semibold text-gray-800">Transactions</h3>
+          <p className="text-xs text-gray-500 font-sans">View, filter, and back up all your transactions.</p>
         </div>
 
         <div className="flex items-center gap-2 self-end md:self-auto">
@@ -177,7 +187,7 @@ export default function TransactionList({
             title="Download JSON backup"
             className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-gray-100 rounded-lg text-xs font-semibold text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition"
           >
-            <Download className="w-3.5 h-3.5" /> Export Data
+            <Download className="w-3.5 h-3.5" /> Export (Download)
           </button>
           
           <button
@@ -185,7 +195,7 @@ export default function TransactionList({
             title="Restore JSON backup"
             className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-gray-100 rounded-lg text-xs font-semibold text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition cursor-pointer"
           >
-            <Upload className="w-3.5 h-3.5" /> Import Backup
+            <Upload className="w-3.5 h-3.5" /> Import (Upload)
           </button>
           <input
             type="file"
@@ -204,7 +214,7 @@ export default function TransactionList({
           <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
           <input
             type="text"
-            placeholder="Search keywords, tags..."
+            placeholder="Search description or tags..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full text-xs pl-9 pr-3 py-2 bg-white border border-gray-100 rounded-xl focus:outline-hidden focus:border-emerald-600 transition"
@@ -218,9 +228,9 @@ export default function TransactionList({
             onChange={(e) => setFilterType(e.target.value as any)}
             className="w-full text-xs px-3 py-2 bg-white border border-gray-100 rounded-xl focus:outline-hidden focus:border-emerald-600 transition appearance-none cursor-pointer"
           >
-            <option value="all">Filters: All Flows</option>
-            <option value="income">Inflows Only (Income)</option>
-            <option value="expense">Outflows Only (Expenses)</option>
+            <option value="all">All Types</option>
+            <option value="income">Income Only</option>
+            <option value="expense">Expenses Only</option>
           </select>
         </div>
 
@@ -231,7 +241,7 @@ export default function TransactionList({
             onChange={(e) => setFilterCategory(e.target.value)}
             className="w-full text-xs px-3 py-2 bg-white border border-gray-100 rounded-xl focus:outline-hidden focus:border-emerald-600 transition appearance-none cursor-pointer"
           >
-            <option value="all">Filters: All Categories</option>
+            <option value="all">All Categories</option>
             {activeCategories.map(cat => (
               <option key={cat} value={cat}>{cat}</option>
             ))}
@@ -245,10 +255,10 @@ export default function TransactionList({
             onChange={(e) => setSortOrder(e.target.value as any)}
             className="w-full text-xs px-3 py-2 bg-white border border-gray-100 rounded-xl focus:outline-hidden focus:border-emerald-600 transition appearance-none cursor-pointer"
           >
-            <option value="date-desc">Sort Chronology: Newest</option>
-            <option value="date-asc">Sort Chronology: Oldest</option>
-            <option value="amount-desc">Sort Magnitude: Highest</option>
-            <option value="amount-asc">Sort Magnitude: Lowest</option>
+            <option value="date-desc">Newest First</option>
+            <option value="date-asc">Oldest First</option>
+            <option value="amount-desc">Highest Amount</option>
+            <option value="amount-asc">Lowest Amount</option>
           </select>
         </div>
       </div>
@@ -257,7 +267,7 @@ export default function TransactionList({
       {processedTransactions.length === 0 ? (
         <div className="p-12 text-center text-gray-400 text-sm font-sans flex flex-col items-center justify-center">
           <Filter className="w-8 h-8 text-gray-200 mb-2" />
-          <p>No transactions match your combined filters.</p>
+          <p>No transactions match your filters.</p>
           {(search || filterType !== 'all' || filterCategory !== 'all') && (
             <button
               onClick={() => {
@@ -267,7 +277,7 @@ export default function TransactionList({
               }}
               className="text-emerald-600 font-medium text-xs mt-1 underline hover:text-emerald-700"
             >
-              Clear criteria
+              Clear filters
             </button>
           )}
         </div>
@@ -277,7 +287,7 @@ export default function TransactionList({
             <thead>
               <tr className="border-b border-gray-100 text-[10px] font-bold text-gray-400 tracking-wider uppercase font-sans bg-gray-50/25">
                 <th className="py-3 px-5">Type</th>
-                <th className="py-3 px-4">Merchant / Details</th>
+                <th className="py-3 px-4">Description</th>
                 <th className="py-3 px-4">Category</th>
                 <th className="py-3 px-4">Date</th>
                 <th className="py-3 px-4 text-right">Amount</th>
@@ -374,13 +384,13 @@ export default function TransactionList({
                       {isEditing ? (
                         <input
                           type="number"
-                          step="0.01"
+                          step="any"
                           value={editAmount}
                           onChange={(e) => setEditAmount(e.target.value)}
-                          className="w-20 text-xs px-2 py-1 bg-white border border-gray-200 rounded-lg text-right focus:outline-hidden"
+                          className="w-24 text-xs px-2 py-1 bg-white border border-gray-200 rounded-lg text-right focus:outline-hidden font-mono"
                         />
                       ) : (
-                        <span>${t.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                        <span className="font-mono">{formatRaw(t.amount)}</span>
                       )}
                     </td>
 

@@ -34,7 +34,15 @@ function getGeminiClient(): GoogleGenAI {
 // 1. API: AI Analytics & Recommendations (Financial Advisor)
 app.post("/api/gemini/advisor", async (req, res) => {
   try {
-    const { transactions, budgets, goals, userPrompt } = req.body;
+    const { 
+      transactions, 
+      budgets, 
+      goals, 
+      userPrompt, 
+      currencyCode = 'USD', 
+      currencySymbol = '$', 
+      currencyRate = 1.0 
+    } = req.body;
     
     const client = getGeminiClient();
 
@@ -58,19 +66,33 @@ app.post("/api/gemini/advisor", async (req, res) => {
       stats.balance = stats.totalIncome - stats.totalExpense;
     }
 
+    // Convert underlying USD amounts to user's configured currency for accurate recommendations
+    const convertedIncome = stats.totalIncome * currencyRate;
+    const convertedExpense = stats.totalExpense * currencyRate;
+    const convertedBalance = stats.balance * currencyRate;
+
+    // Convert category summaries
+    const convertedCategories: Record<string, string> = {};
+    Object.entries(stats.categoryTotals).forEach(([cat, val]) => {
+      convertedCategories[cat] = `${currencySymbol}${(val * currencyRate).toFixed(2)}`;
+    });
+
     const systemPrompt = `You are a premium, friendly, and highly intelligent AI Financial Advisor companion.
 Analyze the user's spending habits, income, budget constraints, and financial goals. Provide targeted wealth-building tips, budget alerts (if their expenses in a category exceed their budget limits), savings ideas, and general advice.
 Keep your analysis tailored, professional, and clear. Break it down using beautiful Markdown formatting.
 
-State of transactions and limits:
-- Total Income: $${stats.totalIncome.toFixed(2)}
-- Total Expenses: $${stats.totalExpense.toFixed(2)}
-- Net Savings/Balance: $${stats.balance.toFixed(2)}
-- Top Expense Categories: ${JSON.stringify(stats.categoryTotals)}
-- Configured Category Budgets: ${JSON.stringify(budgets || [])}
-- Active Financial Goals: ${JSON.stringify(goals || [])}
+The user's preferred display currency is ${currencyCode} (${currencySymbol}). ALWAYS display all monetary sums, metrics, budgets, goals, and recommended values in ${currencyCode} using ${currencySymbol} formats! 
+(For example, show "${currencySymbol}500" or "${currencySymbol}500.00" inside the text). Do NOT show raw USD symbols or values unless you explicitly state that it is USD.
 
-Provide detailed feedback and insights. Respond with encouraging, clear, and action-oriented points. If the user asked a specific question, answer it directly with high accuracy. Avoid overly technical or speculative stock advice. Include concrete tips on how they can improve.`;
+Here are the user portfolio metrics (converted to their preferred currency ${currencyCode}):
+- Total Income: ${currencySymbol}${convertedIncome.toFixed(2)} ${currencyCode}
+- Total Expenses: ${currencySymbol}${convertedExpense.toFixed(2)} ${currencyCode}
+- Net Savings/Balance: ${currencySymbol}${convertedBalance.toFixed(2)} ${currencyCode}
+- Top Expense Categories (converted): ${JSON.stringify(convertedCategories)}
+- Configured Category Budgets (original limit stored in USD): ${JSON.stringify((budgets || []).map((b: any) => ({ ...b, limitInPreferredCurrency: `${currencySymbol}${(b.limit * currencyRate).toFixed(2)}` })))}
+- Active Financial Goals (original amounts stored in USD): ${JSON.stringify((goals || []).map((g: any) => ({ ...g, currentInPreferred: `${currencySymbol}${(g.currentAmount * currencyRate).toFixed(2)}`, targetInPreferred: `${currencySymbol}${(g.targetAmount * currencyRate).toFixed(2)}` })))}
+
+Provide detailed feedback and insights. Respond with encouraging, clear, and action-oriented points in their preferred currency (${currencyCode}). If the user asked a specific question, answer it directly with high accuracy. Avoid overly technical or speculative stock advice. Include concrete tips on how they can improve.`;
 
     const response = await client.models.generateContent({
       model: "gemini-3.5-flash",
