@@ -201,110 +201,112 @@ export default function TransactionForm({ onAddTransaction }: TransactionFormPro
       if (data.notes) setNotes(data.notes);
       if (Array.isArray(data.tags)) setTagInput(data.tags.join(', '));
 
-      setAiSuccessMessage(`Transaction successfully parsed by AI! Converted base parameters to local ${currency.code}. Review below and click 'Record Transaction'.`);
+      setAiSuccessMessage(`AI Scanner read transaction successfully. Parameterized amounts to ${currency.code}. Please review and log below.`);
       setActiveTab('manual'); // Bring them back to review
     } catch (error: any) {
       console.error(error);
-      setAiError(error.message || "Failed to parse content. Please double check your Gemini key or input.");
+      setAiError(error.message || "Failed to scan text. Check parameters or check if server key is loaded.");
     } finally {
       setIsAiLoading(false);
     }
   };
 
   return (
-    <div className="bg-white border border-gray-100 rounded-2xl shadow-xs overflow-hidden">
+    <div className="bg-white border border-zinc-200/50 rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.02)] overflow-hidden">
       {/* Header Tabs */}
-      <div className="flex border-b border-gray-100 bg-gray-50/50">
+      <div className="flex border-b border-zinc-200/40 bg-zinc-50/50">
         <button
+          type="button"
           onClick={() => setActiveTab('manual')}
-          className={`flex-1 py-3 text-sm font-display font-medium border-b-2 transition-all ${
+          className={`flex-1 py-3.5 text-xs font-semibold tracking-wider uppercase border-b-2 transition-all cursor-pointer ${
             activeTab === 'manual'
-              ? 'border-emerald-600 text-emerald-600 bg-white'
-              : 'border-transparent text-gray-500 hover:text-gray-900 hover:bg-gray-100/50'
+              ? 'border-zinc-950 text-zinc-950 bg-white font-bold'
+              : 'border-transparent text-zinc-400 hover:text-zinc-800'
           }`}
         >
-          Manual Input
+          Manual Log
         </button>
         <button
+          type="button"
           onClick={() => setActiveTab('ai')}
-          className={`flex-1 py-3 text-sm font-display font-medium border-b-2 transition-all flex items-center justify-center gap-1.5 ${
+          className={`flex-1 py-3.5 text-xs font-semibold tracking-wider uppercase border-b-2 transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
             activeTab === 'ai'
-              ? 'border-emerald-600 text-emerald-600 bg-white'
-              : 'border-transparent text-gray-500 hover:text-gray-900 hover:bg-gray-100/50'
+              ? 'border-zinc-950 text-zinc-950 bg-white font-bold'
+              : 'border-transparent text-zinc-400 hover:text-zinc-800'
           }`}
         >
-          <Sparkles className="w-4 h-4 text-emerald-500 shrink-0" />
-          AI Scanner
+          <Sparkles className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+          <span>AI Scanner</span>
         </button>
       </div>
 
-      <div className="p-6">
+      <div className="p-5 sm:p-6">
         {/* TAB 1: MANUAL FORM */}
         {activeTab === 'manual' && (
           <form onSubmit={handleSubmit} className="space-y-4">
             {aiSuccessMessage && (
-              <div className="flex items-start gap-2.5 p-3.5 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-800 text-xs">
+              <div className="flex items-start gap-2.5 p-3.5 bg-emerald-50 border border-emerald-100 rounded-xl text-emerald-900 text-xs animate-fade-in">
                 <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                <span>{aiSuccessMessage}</span>
+                <span className="font-medium">{aiSuccessMessage}</span>
               </div>
             )}
 
             {/* Quick Templates horizontal flow row */}
-            <div className="bg-slate-50/50 p-4 border border-slate-100 rounded-2xl space-y-3">
+            <div className="bg-zinc-50 p-4 border border-zinc-200/40 rounded-xl space-y-3">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1.5 text-xs font-bold text-gray-500 uppercase tracking-wider font-sans">
-                  <Zap className="w-3.5 h-3.5 text-amber-500 shrink-0" />
-                  <span>⚡ Templates</span>
+                <div className="flex items-center gap-1 px-1.5 py-0.5 bg-zinc-200/40 rounded-md font-mono text-[9px] font-bold text-zinc-500 uppercase tracking-widest">
+                  <Zap className="w-3 h-3 text-amber-500 shrink-0 mr-0.5" />
+                  <span>Presets</span>
                 </div>
                 <button
                   type="button"
                   onClick={() => setIsCreatingTemplate(!isCreatingTemplate)}
-                  className="text-[11px] font-bold text-emerald-600 hover:text-emerald-700 transition flex items-center gap-0.5"
+                  className="text-[10px] font-bold text-zinc-500 hover:text-zinc-900 transition flex items-center gap-0.5 cursor-pointer"
                 >
                   <BookmarkPlus className="w-3.5 h-3.5 shrink-0" />
-                  <span>{isCreatingTemplate ? 'Cancel Save' : 'Save current form as a template'}</span>
+                  <span>{isCreatingTemplate ? 'Cancel' : 'Save as preset'}</span>
                 </button>
               </div>
 
               {/* Save template inline form panel */}
               {isCreatingTemplate && (
-                <div className="p-3 bg-white border border-gray-100/80 rounded-xl space-y-2.5 shadow-2xs font-sans">
-                  <p className="text-[10px] text-gray-400">
-                    To save a template, fill out the form details below first, then give it a name.
+                <div className="p-3 bg-white border border-zinc-200 rounded-lg space-y-2.5 shadow-2xs">
+                  <p className="text-[10px] text-zinc-400 font-light leading-relaxed">
+                    Set properties in form below first, then pick a label name for the preset.
                   </p>
                   <div className="flex gap-2">
                     <input
                       type="text"
-                      placeholder="e.g. 🍿 Friday Cinema, 🏠 Rent, 🛒 Grocery Store"
+                      placeholder="e.g. Starbucks Cash, Rent Bill"
                       value={newTemplateLabel}
                       required={isCreatingTemplate}
                       onChange={(e) => setNewTemplateLabel(e.target.value)}
-                      className="w-full text-xs px-2.5 py-1.5 bg-gray-50/50 border border-gray-100 focus:outline-hidden focus:border-emerald-600 focus:bg-white rounded-lg"
+                      className="w-full text-xs px-2.5 py-1.5 bg-zinc-50 border border-zinc-200 focus:outline-hidden focus:border-zinc-950 focus:bg-white rounded-lg font-sans"
                     />
                     <button
                       type="button"
                       onClick={handleCreateTemplate}
-                      className="px-3 py-1.5 bg-emerald-600 text-white hover:bg-emerald-700 rounded-lg text-xs font-semibold shrink-0 transition"
+                      className="px-3 py-1.5 bg-zinc-950 text-white hover:bg-zinc-900 rounded-lg text-xs font-semibold shrink-0 transition"
                     >
-                      Save Shortcut
+                      Save
                     </button>
                   </div>
                 </div>
               )}
 
               {templates.length === 0 ? (
-                <div className="text-[11px] text-gray-400 italic font-sans py-1">No custom quick shortcuts kept yet.</div>
+                <div className="text-[10px] text-zinc-400 font-light font-sans py-1">No custom presets saved.</div>
               ) : (
-                <div className="flex items-center gap-2 overflow-x-auto pb-1.5 pt-0.5 no-scrollbar max-w-full">
+                <div className="flex items-center gap-2 overflow-x-auto pb-1.5 pt-0.5 scrollbar-none max-w-full">
                   {templates.map((tpl) => (
                     <div
                       key={tpl.id}
                       onClick={() => applyTemplate(tpl)}
-                      title="Click to fill form fields"
-                      className="group relative cursor-pointer flex items-center gap-1.5 px-2.5 py-1.5 bg-white border border-gray-100 hover:border-emerald-200 hover:bg-emerald-50/15 active:scale-95 text-xs text-gray-700 font-semibold rounded-xl transition duration-150 shrink-0 shadow-2xs font-sans"
+                      title="Pre-fill details"
+                      className="group relative cursor-pointer flex items-center gap-1.5 px-2.5 py-1 bg-white border border-zinc-200 hover:border-zinc-400 hover:bg-zinc-50 active:scale-97 text-[11px] text-zinc-700 font-semibold rounded-lg transition duration-150 shrink-0 font-sans"
                     >
                       <span>{tpl.label}</span>
-                      <span className="text-[10px] text-slate-400 font-mono font-medium">{formatRaw(tpl.amount, 0)}</span>
+                      <span className="text-[10px] text-zinc-400 font-mono font-bold">{formatRaw(tpl.amount, 0)}</span>
                       
                       {/* One-click record instantly action inside template bubble */}
                       <button
@@ -312,7 +314,7 @@ export default function TransactionForm({ onAddTransaction }: TransactionFormPro
                         onClick={(e) => {
                           e.stopPropagation();
                           onAddTransaction({
-                            amount: tpl.amount, // already USD base
+                            amount: tpl.amount,
                             description: tpl.description,
                             type: tpl.type,
                             category: tpl.category,
@@ -320,10 +322,10 @@ export default function TransactionForm({ onAddTransaction }: TransactionFormPro
                             notes: tpl.notes,
                             tags: tpl.tags
                           });
-                          setAiSuccessMessage(`Quick recorded "${tpl.label}" with today's date successfully!`);
+                          setAiSuccessMessage(`Preset logged successfully for today!`);
                         }}
-                        title="Instant Add with Today's Date"
-                        className="hidden group-hover:inline-block ml-1.5 p-0.5 hover:bg-emerald-100 text-emerald-600 rounded-md transition"
+                        title="Record instantly"
+                        className="hidden group-hover:inline-block ml-1 p-0.5 hover:bg-zinc-100 text-zinc-900 rounded"
                       >
                         <Zap className="w-2.5 h-2.5" />
                       </button>
@@ -332,8 +334,8 @@ export default function TransactionForm({ onAddTransaction }: TransactionFormPro
                       <button
                         type="button"
                         onClick={(e) => handleDeleteTemplate(tpl.id, e)}
-                        title="Delete shortcut template"
-                        className="hidden group-hover:inline-block ml-0.5 p-0.5 hover:bg-rose-50 text-gray-300 hover:text-rose-500 rounded-md transition"
+                        title="Delete template preset"
+                        className="hidden group-hover:inline-block ml-0.5 p-0.5 hover:bg-rose-50 text-zinc-300 hover:text-rose-500 rounded"
                       >
                         <X className="w-2.5 h-2.5" />
                       </button>
@@ -345,37 +347,37 @@ export default function TransactionForm({ onAddTransaction }: TransactionFormPro
 
             {/* Type Switcher */}
             <div>
-              <label className="block text-xs font-bold text-gray-400 tracking-wider uppercase mb-1.5 font-sans">Type</label>
+              <label className="block text-[10px] font-mono font-bold text-zinc-400 tracking-wider uppercase mb-1.5">Record Type</label>
               <div className="grid grid-cols-2 gap-2">
                 <button
                   type="button"
                   onClick={() => handleTypeChange('expense')}
-                  className={`py-2 px-3 rounded-xl border text-sm font-medium flex items-center justify-center gap-1.5 transition-all ${
+                  className={`py-2 px-3 rounded-lg border text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
                     type === 'expense'
-                      ? 'bg-rose-50 border-rose-200 text-rose-700'
-                      : 'bg-white border-gray-100 text-gray-500 hover:bg-gray-50'
+                      ? 'bg-zinc-950 border-zinc-950 text-white font-bold'
+                      : 'bg-white border-zinc-200 text-zinc-550 hover:bg-zinc-50'
                   }`}
                 >
-                  <ArrowDownLeft className="w-4 h-4 text-rose-500" /> Expense
+                  <ArrowDownLeft className="w-3.5 h-3.5" /> Outflow
                 </button>
                 <button
                   type="button"
                   onClick={() => handleTypeChange('income')}
-                  className={`py-2 px-3 rounded-xl border text-sm font-medium flex items-center justify-center gap-1.5 transition-all ${
+                  className={`py-2 px-3 rounded-lg border text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
                     type === 'income'
-                      ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
-                      : 'bg-white border-gray-100 text-gray-500 hover:bg-gray-50'
+                      ? 'bg-zinc-950 border-zinc-950 text-white font-bold'
+                      : 'bg-white border-zinc-200 text-zinc-550 hover:bg-zinc-50'
                   }`}
                 >
-                  <ArrowUpRight className="w-4 h-4 text-emerald-500" /> Income
+                  <ArrowUpRight className="w-3.5 h-3.5" /> Inflow
                 </button>
               </div>
             </div>
 
             {/* Amount and Date */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-bold text-gray-400 tracking-wider uppercase mb-1 font-sans">
+                <label className="block text-[10px] font-mono font-bold text-zinc-400 tracking-wider uppercase mb-1">
                   Amount ({currency.symbol} {currency.code})
                 </label>
                 <input
@@ -386,73 +388,75 @@ export default function TransactionForm({ onAddTransaction }: TransactionFormPro
                   required
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
-                  className="w-full text-sm py-2.5 px-3.5 bg-gray-50/50 border border-gray-100 focus:border-emerald-600 focus:bg-white rounded-xl focus:outline-hidden transition font-mono"
+                  className="w-full text-xs font-mono font-bold px-3 py-2 bg-zinc-55/5 border border-zinc-200 focus:outline-hidden focus:border-zinc-950 focus:bg-white focus:ring-1 focus:ring-zinc-950/10 rounded-lg transition"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-gray-400 tracking-wider uppercase mb-1 font-sans">Date</label>
+                <label className="block text-[10px] font-mono font-bold text-zinc-400 tracking-wider uppercase mb-1">Date</label>
                 <input
                   type="date"
                   required
                   value={date}
                   onChange={(e) => setDate(e.target.value)}
-                  className="w-full text-sm py-2.5 px-3.5 bg-gray-50/50 border border-gray-100 focus:border-emerald-600 focus:bg-white rounded-xl focus:outline-hidden transition"
+                  className="w-full text-xs font-mono font-bold px-3 py-2 bg-zinc-55/5 border border-zinc-200 focus:outline-hidden focus:border-zinc-950 focus:bg-white rounded-lg transition"
                 />
               </div>
             </div>
 
             {/* Description & Category */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-bold text-gray-400 tracking-wider uppercase mb-1 font-sans">Description</label>
+                <label className="block text-[10px] font-mono font-bold text-zinc-400 tracking-wider uppercase mb-1">Label / Merchant</label>
                 <input
                   type="text"
-                  placeholder="e.g. Starbucks, Client Wire, Rent payment"
+                  placeholder="Starbucks, Rent deposit..."
                   required
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  className="w-full text-sm py-2.5 px-3.5 bg-gray-50/50 border border-gray-100 focus:border-emerald-600 focus:bg-white rounded-xl focus:outline-hidden transition"
+                  className="w-full text-xs px-3 py-2 bg-zinc-55/5 border border-zinc-200 focus:outline-hidden focus:border-zinc-950 focus:bg-white rounded-lg transition font-sans"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-gray-400 tracking-wider uppercase mb-1 font-sans">Category</label>
-                <select
-                  value={category}
-                  onChange={(e) => setCategory(e.target.value)}
-                  className="w-full text-sm py-2.5 px-3.5 bg-gray-50/50 border border-gray-100 focus:border-emerald-600 focus:bg-white rounded-xl focus:outline-hidden transition appearance-none cursor-pointer"
-                >
-                  {CATEGORIES[type].map((cat) => (
-                    <option key={cat} value={cat}>
-                      {cat}
-                    </option>
-                  ))}
-                </select>
+                <label className="block text-[10px] font-mono font-bold text-zinc-400 tracking-wider uppercase mb-1">Category Select</label>
+                <div className="relative">
+                  <select
+                    value={category}
+                    onChange={(e) => setCategory(e.target.value)}
+                    className="w-full text-xs px-3 py-2 bg-zinc-55/5 border border-zinc-200 focus:outline-hidden focus:border-zinc-950 focus:bg-white rounded-lg transition appearance-none cursor-pointer font-sans font-medium"
+                  >
+                    {CATEGORIES[type].map((cat) => (
+                      <option key={cat} value={cat}>
+                        {cat}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
             </div>
 
             {/* Notes & Tags Input */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-bold text-gray-400 tracking-wider uppercase mb-1 font-sans">Tags (separate with commas)</label>
+                <label className="block text-[10px] font-mono font-bold text-zinc-400 tracking-wider uppercase mb-1">Tags (separated by commas)</label>
                 <input
                   type="text"
-                  placeholder="e.g. dining, bills, travel"
+                  placeholder="personal, bills, dining..."
                   value={tagInput}
                   onChange={(e) => setTagInput(e.target.value)}
-                  className="w-full text-sm py-2.5 px-3.5 bg-gray-50/50 border border-gray-100 focus:border-emerald-600 focus:bg-white rounded-xl focus:outline-hidden transition"
+                  className="w-full text-xs px-3 py-2 bg-zinc-55/5 border border-zinc-200 focus:outline-hidden focus:border-zinc-950 focus:bg-white rounded-lg transition font-sans"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-gray-400 tracking-wider uppercase mb-1 font-sans">Notes (Optional)</label>
+                <label className="block text-[10px] font-mono font-bold text-zinc-400 tracking-wider uppercase mb-1">Notes / Ledger memo</label>
                 <input
                   type="text"
-                  placeholder="e.g. Split with Sarah"
+                  placeholder="Optional annotations..."
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
-                  className="w-full text-sm py-2.5 px-3.5 bg-gray-50/50 border border-gray-100 focus:border-emerald-600 focus:bg-white rounded-xl focus:outline-hidden transition"
+                  className="w-full text-xs px-3 py-2 bg-zinc-55/5 border border-zinc-200 focus:outline-hidden focus:border-zinc-950 focus:bg-white rounded-lg transition font-sans"
                 />
               </div>
             </div>
@@ -460,9 +464,10 @@ export default function TransactionForm({ onAddTransaction }: TransactionFormPro
             {/* Submit Button */}
             <button
               type="submit"
-              className="w-full py-3 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-display font-medium flex items-center justify-center gap-1.5 shadow-xs transition"
+              className="w-full py-2.5 px-4 bg-zinc-950 hover:bg-zinc-900 text-white rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 shadow-sm transition cursor-pointer border border-zinc-950"
             >
-              <Plus className="w-4 h-4" /> Add Transaction
+              <Plus className="w-4 h-4" /> 
+              <span>Add Cash Item</span>
             </button>
           </form>
         )}
@@ -470,27 +475,33 @@ export default function TransactionForm({ onAddTransaction }: TransactionFormPro
         {/* TAB 2: AI COGNITIVE SCANNER */}
         {activeTab === 'ai' && (
           <div className="space-y-4 font-sans">
-            <div className="bg-emerald-50/55 border border-emerald-100 p-4 rounded-xl text-xs space-y-1 text-emerald-800">
-              <div className="font-bold flex items-center gap-1">
-                <Sparkles className="w-3.5 h-3.5 shrink-0" />
-                <span>AI Text Scanner</span>
+            <div className="bg-zinc-950 text-zinc-100 border border-zinc-800 p-4 rounded-xl text-xs space-y-1.5 font-sans leading-relaxed">
+              <div className="font-semibold text-emerald-400 flex items-center gap-1.5 font-mono">
+                <Sparkles className="w-3.5 h-3.5 shrink-0 text-emerald-400" />
+                <span>AI TRANSCRIPTION ACTIVE</span>
               </div>
-              <p>Write or paste any invoice text, receipt, or a simple sentence like: <span className="italic font-mono bg-white px-1 border border-emerald-100 rounded">"Spent $12 on lunch yesterday"</span> or <span className="italic font-mono bg-white px-1 border border-emerald-100 rounded text-[11px]">"paid $1500 for rent today"</span>.</p>
+              <p className="text-zinc-300 font-light font-sans">
+                Paste receipt invoice lines, text snips, or arbitrary chats. Gemini parses structured merchant names, amounts, tags, and categories automatically.
+              </p>
+              <div className="pt-2 flex flex-wrap gap-1">
+                <span className="text-[10px] font-mono bg-zinc-900 border border-zinc-800 px-2 py-0.5 rounded text-zinc-400">"grocery store 42.50 usd today"</span>
+                <span className="text-[10px] font-mono bg-zinc-900 border border-zinc-800 px-2 py-0.5 rounded text-zinc-400">"Uber airport ride 75 JPY yesterday"</span>
+              </div>
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-gray-400 tracking-wider uppercase mb-1">Receipt text or simple sentence</label>
+              <label className="block text-[10px] font-mono font-bold text-zinc-400 tracking-wider uppercase mb-1">Receipt text or transcription sentence</label>
               <textarea
                 rows={5}
-                placeholder="Write details here (e.g. Spent 15 on movie tickets today)..."
+                placeholder="Paste receipt or type details... e.g., Spent 14.50 on salad bowls yesterday noon"
                 value={aiText}
                 onChange={(e) => setAiText(e.target.value)}
-                className="w-full text-sm py-2.5 px-3.5 bg-gray-50/50 border border-gray-100 focus:border-emerald-600 focus:bg-white rounded-xl focus:outline-hidden transition"
+                className="w-full text-xs px-3 py-2 bg-zinc-55/5 border border-zinc-200 focus:outline-hidden focus:border-zinc-950 focus:bg-white rounded-lg transition font-sans resize-none"
               />
             </div>
 
             {aiError && (
-              <div className="flex items-start gap-2 p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-800 text-xs">
+              <div className="flex items-start gap-2 p-3 bg-rose-50 border border-rose-200 rounded-lg text-rose-800 text-xs animate-fade-in">
                 <AlertCircle className="w-4 h-4 shrink-0 text-rose-600 mt-0.5" />
                 <span>{aiError}</span>
               </div>
@@ -500,17 +511,17 @@ export default function TransactionForm({ onAddTransaction }: TransactionFormPro
               type="button"
               disabled={isAiLoading}
               onClick={handleAiParse}
-              className="w-full py-3 px-4 bg-emerald-600 text-white rounded-xl text-sm font-semibold hover:bg-emerald-700 disabled:opacity-50 transition-all flex items-center justify-center gap-2 shadow-xs cursor-pointer"
+              className="w-full py-2.5 px-4 bg-zinc-950 hover:bg-zinc-900 text-white rounded-lg text-xs font-semibold disabled:opacity-50 transition-all flex items-center justify-center gap-2 shadow-sm cursor-pointer border border-zinc-950"
             >
               {isAiLoading ? (
                 <>
-                  <Loader2 className="w-4 h-4 animate-spin shrink-0" />
-                  AI is reading your text...
+                  <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />
+                  <span>Scanning text with AI...</span>
                 </>
               ) : (
                 <>
-                  <Sparkles className="w-4 h-4 shrink-0 text-amber-200" />
-                  Find details with AI
+                  <Sparkles className="w-3.5 h-3.5 shrink-0 text-emerald-400" />
+                  <span>Scan and Extract details</span>
                 </>
               )}
             </button>

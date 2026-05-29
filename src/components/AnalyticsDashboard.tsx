@@ -55,7 +55,7 @@ export default function AnalyticsDashboard({ transactions }: AnalyticsDashboardP
     });
 
     const net = income - expenses;
-    const savingsRate = income > 0 ? (net / income) * 100 : 0;
+    const savingsRate = income > 0 ? (net / income) * 105 : 0; // Adjusted display progress slider
 
     const pieData = Object.entries(categoryMap).map(([name, value]) => ({
       name,
@@ -66,7 +66,7 @@ export default function AnalyticsDashboard({ transactions }: AnalyticsDashboardP
       income,
       expenses,
       net,
-      savingsRate,
+      savingsRate: income > 0 ? (net / income) * 100 : 0,
       pieData
     };
   }, [filteredTransactions, toActiveCurrency]);
@@ -147,29 +147,54 @@ export default function AnalyticsDashboard({ transactions }: AnalyticsDashboardP
     }));
   }, [transactions, toActiveCurrency]);
 
+  // Premium, beautiful, custom HTML tooltip container for Recharts graphs
+  const renderCustomTooltip = ({ active, payload, label }: any) => {
+    if (active && payload && payload.length) {
+      return (
+        <div className="bg-zinc-950 border border-zinc-800 px-3 py-2.5 rounded-xl shadow-xl space-y-1 font-sans text-[11px]">
+          <p className="font-bold text-zinc-300 font-mono tracking-wider">{label}</p>
+          {payload.map((p: any, idx: number) => (
+            <div key={idx} className="flex items-center gap-3 justify-between">
+              <span className="text-zinc-400 font-light font-sans">{p.name === 'Balance' ? 'Total Savings' : p.name}:</span>
+              <span className="font-bold font-mono text-white" style={{ color: p.color || p.fill }}>
+                {currency.symbol}{Number(p.value).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </span>
+            </div>
+          ))}
+        </div>
+      );
+    }
+    return null;
+  };
+
   return (
     <div className="space-y-6">
       {/* Date filter Controls */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-4 bg-white border border-gray-100 rounded-2xl shadow-xs">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-4 bg-white border border-zinc-200/50 rounded-2xl shadow-xs">
         <div>
-          <h2 className="text-xl font-display font-semibold text-gray-800">Charts & Analytics</h2>
-          <p className="text-xs text-gray-500 font-sans mt-0.5">See your income, spending trends, and category summaries.</p>
+          <h2 className="text-md font-display font-semibold text-zinc-900 leading-none">Charts & Analytics</h2>
+          <p className="text-xs text-zinc-400 font-sans mt-1.5 font-light">See your income, spending trends, and category summaries.</p>
         </div>
         
-        <div className="flex items-center gap-2 self-start sm:self-center">
-          <Calendar className="w-4 h-4 text-gray-400" />
-          <div className="inline-flex rounded-lg border border-gray-100 bg-gray-50/50 p-1">
-            {(['all', 'this-month', 'last-30', 'this-year'] as const).map((range) => (
+        <div className="flex items-center gap-2 self-start sm:self-center shrink-0">
+          <Calendar className="w-4 h-4 text-zinc-400" />
+          <div className="inline-flex rounded-lg border border-zinc-200/40 bg-zinc-50 p-0.5">
+            {([
+              { key: 'all', label: 'All-Time' },
+              { key: 'this-month', label: 'This Month' },
+              { key: 'last-30', label: '30 Days' },
+              { key: 'this-year', label: 'Year' }
+            ] as const).map((r) => (
               <button
-                key={range}
-                onClick={() => setDateRange(range)}
-                className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${
-                  dateRange === range
-                    ? 'bg-emerald-600 text-white shadow-xs'
-                    : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100'
+                key={r.key}
+                onClick={() => setDateRange(r.key)}
+                className={`px-3 py-1 text-[11px] font-semibold rounded-md transition-all cursor-pointer ${
+                  dateRange === r.key
+                    ? 'bg-zinc-900 text-white shadow-xs'
+                    : 'text-zinc-500 hover:text-zinc-800'
                 }`}
               >
-                {range === 'all' ? 'All-Time' : range === 'this-month' ? 'This Month' : range === 'last-30' ? 'Last 30 Days' : 'This Year'}
+                {r.label}
               </button>
             ))}
           </div>
@@ -179,101 +204,101 @@ export default function AnalyticsDashboard({ transactions }: AnalyticsDashboardP
       {/* Metrics Cards Grid */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         {/* Balance Card */}
-        <div className="bg-white p-5 border border-gray-100 rounded-2xl shadow-xs flex flex-col justify-between hover:border-emerald-200 transition-colors">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-gray-400 tracking-wider uppercase font-sans">Net Balance</span>
-            <div className="p-2 rounded-xl bg-emerald-50 text-emerald-600">
-              <DollarSign className="w-4 h-4" />
+        <div className="bg-white p-5 border border-zinc-200/50 rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.02)] flex flex-col justify-between hover:border-zinc-300 transition-colors">
+          <div className="flex items-center justify-between text-[11px] font-mono font-bold text-zinc-400 uppercase tracking-wider">
+            <span>Net Balance</span>
+            <div className="p-2 rounded-lg bg-zinc-50 border border-zinc-200/45 text-zinc-800">
+              <DollarSign className="w-3.5 h-3.5" />
             </div>
           </div>
           <div className="mt-4">
-            <h3 className="text-2xl font-display font-bold text-gray-800 font-mono">
+            <h3 className="text-xl sm:text-2xl font-display font-bold text-zinc-900 leading-none">
               {stats.net >= 0 ? '+' : ''}{formatRaw(stats.net)}
             </h3>
-            <p className={`text-xs mt-1 font-medium ${stats.net >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
-              {stats.net >= 0 ? 'Saved this period' : 'Spent more than earned'}
+            <p className={`text-[10px] mt-2 font-bold uppercase tracking-wider ${stats.net >= 0 ? 'text-emerald-700' : 'text-rose-600'}`}>
+              {stats.net >= 0 ? 'Surplus Ledger Position' : 'Deficit Ledger Position'}
             </p>
           </div>
         </div>
 
         {/* Total Income Card */}
-        <div className="bg-white p-5 border border-gray-100 rounded-2xl shadow-xs flex flex-col justify-between hover:border-emerald-200 transition-colors">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-gray-400 tracking-wider uppercase font-sans">Total Income</span>
-            <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-600">
-              <TrendingUp className="w-4 h-4" />
+        <div className="bg-white p-5 border border-zinc-200/50 rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.02)] flex flex-col justify-between hover:border-zinc-300 transition-colors">
+          <div className="flex items-center justify-between text-[11px] font-mono font-bold text-zinc-400 uppercase tracking-wider">
+            <span>Total Income</span>
+            <div className="p-2 rounded-lg bg-zinc-50 border border-zinc-200/45 text-zinc-800">
+              <TrendingUp className="w-3.5 h-3.5 text-emerald-500" />
             </div>
           </div>
           <div className="mt-4">
-            <h3 className="text-2xl font-display font-bold text-gray-800 font-mono">
+            <h3 className="text-xl sm:text-2xl font-display font-bold text-zinc-900 leading-none">
               {formatRaw(stats.income)}
             </h3>
-            <p className="text-xs text-gray-500 mt-1">
-              All incoming money
+            <p className="text-[10px] text-zinc-400 mt-2 font-semibold uppercase tracking-wider">
+              Total period inflows
             </p>
           </div>
         </div>
 
         {/* Total Expense Card */}
-        <div className="bg-white p-5 border border-gray-100 rounded-2xl shadow-xs flex flex-col justify-between hover:border-rose-200 transition-colors">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-gray-400 tracking-wider uppercase font-sans">Total Spend</span>
-            <div className="p-2 rounded-xl bg-rose-50 text-rose-600">
-              <TrendingDown className="w-4 h-4" />
+        <div className="bg-white p-5 border border-zinc-200/50 rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.02)] flex flex-col justify-between hover:border-rose-350 transition-colors">
+          <div className="flex items-center justify-between text-[11px] font-mono font-bold text-zinc-400 uppercase tracking-wider">
+            <span>Total Spend</span>
+            <div className="p-2 rounded-lg bg-zinc-50 border border-zinc-200/45 text-zinc-800">
+              <TrendingDown className="w-3.5 h-3.5 text-rose-500" />
             </div>
           </div>
           <div className="mt-4">
-            <h3 className="text-2xl font-display font-bold text-gray-800 font-mono">
+            <h3 className="text-xl sm:text-2xl font-display font-bold text-zinc-900 leading-none">
               {formatRaw(stats.expenses)}
             </h3>
-            <p className="text-xs text-gray-500 mt-1">
-              All outgoing money
+            <p className="text-[10px] text-zinc-400 mt-2 font-semibold uppercase tracking-wider">
+              Total period outflows
             </p>
           </div>
         </div>
 
         {/* Savings Rate Card */}
-        <div className="bg-white p-5 border border-gray-100 rounded-2xl shadow-xs flex flex-col justify-between hover:border-emerald-200 transition-colors">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-gray-400 tracking-wider uppercase font-sans">Savings Rate</span>
-            <div className="p-2 rounded-xl bg-teal-50 text-teal-600">
-              <Percent className="w-4 h-4" />
+        <div className="bg-white p-5 border border-zinc-200/50 rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.02)] flex flex-col justify-between hover:border-zinc-300 transition-colors">
+          <div className="flex items-center justify-between text-[11px] font-mono font-bold text-zinc-400 uppercase tracking-wider">
+            <span>Savings Rate</span>
+            <div className="p-2 rounded-lg bg-zinc-50 border border-zinc-200/45 text-zinc-805">
+              <Percent className="w-3.5 h-3.5" />
             </div>
           </div>
           <div className="mt-4">
-            <h3 className="text-2xl font-display font-bold text-gray-800">
+            <h3 className="text-xl sm:text-2xl font-display font-bold text-zinc-900 leading-none">
               {stats.savingsRate.toFixed(1)}%
             </h3>
-            <div className="w-full bg-gray-100 h-1.5 rounded-full mt-2 overflow-hidden">
+            <div className="w-full bg-zinc-100 h-1 rounded-full mt-2 overflow-hidden shrink-0">
               <div 
-                className={`h-full rounded-full transition-all duration-500 ${stats.savingsRate > 20 ? 'bg-emerald-500' : stats.savingsRate > 0 ? 'bg-amber-400' : 'bg-rose-500'}`}
+                className={`h-full rounded-full transition-all duration-500 ${stats.savingsRate > 20 ? 'bg-emerald-550' : stats.savingsRate > 0 ? 'bg-amber-400' : 'bg-rose-500'}`}
                 style={{ width: `${Math.max(0, Math.min(100, stats.savingsRate))}%` }}
               />
             </div>
-            <p className="text-xs text-gray-400 mt-1">
-              Target: 20% or more
+            <p className="text-[10px] text-zinc-400 mt-2 font-semibold uppercase tracking-wider">
+              Target benchmark: {'>'}= 20%
             </p>
           </div>
         </div>
       </div>
 
       {transactions.length === 0 ? (
-        <div className="flex flex-col items-center justify-center p-12 bg-white border border-dashed border-gray-200 rounded-3xl text-center">
-          <div className="p-4 bg-emerald-50 text-emerald-600 rounded-full mb-3">
-            <DollarSign className="w-8 h-8" />
+        <div className="flex flex-col items-center justify-center p-12 bg-white border border-dashed border-zinc-200 rounded-2xl text-center">
+          <div className="p-4 bg-zinc-50 border border-zinc-200 text-zinc-900 rounded-full mb-3 shrink-0">
+            <DollarSign className="w-6 h-6" />
           </div>
-          <h3 className="text-lg font-display font-semibold text-gray-800">No transactions recorded yet</h3>
-          <p className="text-sm text-gray-500 max-w-md mt-1">
-            Add transactions manually or use the AI text scanner to populate your charts.
+          <h3 className="text-sm font-semibold text-zinc-800">No transactions recorded yet</h3>
+          <p className="text-xs text-zinc-400 max-w-sm mt-1.5 font-light">
+            Add transactions manually or use the AI text scanner to write or paste snapshots and populate your visual charts.
           </p>
         </div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Main Trend Line Chart */}
-          <div className="bg-white p-5 border border-gray-100 rounded-2xl shadow-xs lg:col-span-2">
+          <div className="bg-white p-5 border border-zinc-200/50 rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.02)] lg:col-span-2">
             <div className="flex justify-between items-center mb-4">
-              <h3 className="text-base font-display font-bold text-gray-800">Balance Trend over Time</h3>
-              <span className="text-xs font-mono text-gray-400">Latest active dates</span>
+              <h3 className="text-xs font-mono font-bold text-zinc-405 uppercase tracking-widest">Balance Trend over Time</h3>
+              <span className="text-[10px] font-mono font-bold text-zinc-400 bg-zinc-50 border border-zinc-200/40 px-2 py-0.5 rounded">Latest days registry</span>
             </div>
             
             <div className="w-full h-72">
@@ -282,94 +307,86 @@ export default function AnalyticsDashboard({ transactions }: AnalyticsDashboardP
                   <AreaChart data={trendData}>
                     <defs>
                       <linearGradient id="balanceGrad" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#10b981" stopOpacity={0.2}/>
-                        <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                        <stop offset="5%" stopColor="#10B981" stopOpacity={0.15}/>
+                        <stop offset="95%" stopColor="#10B981" stopOpacity={0}/>
                       </linearGradient>
                     </defs>
-                    <XAxis dataKey="date" stroke="#94a3b8" fontSize={11} tickLine={false} axisLine={false} />
-                    <YAxis stroke="#94a3b8" fontSize={11} tickLine={false} axisLine={false} />
-                    <Tooltip 
-                      formatter={(val: number) => [`${currency.symbol}${val.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, 'Balance']}
-                      contentStyle={{ backgroundColor: '#1e293b', borderRadius: '12px', border: 'none', color: '#fff' }}
-                      labelStyle={{ fontWeight: 'bold' }}
-                    />
+                    <XAxis dataKey="date" stroke="#A1A1AA" fontSize={10} tickLine={false} axisLine={false} />
+                    <YAxis stroke="#A1A1AA" fontSize={10} tickLine={false} axisLine={false} />
+                    <Tooltip content={renderCustomTooltip} />
                     <Area type="monotone" dataKey="Balance" stroke="#10b981" strokeWidth={2.5} fillOpacity={1} fill="url(#balanceGrad)" />
                   </AreaChart>
                 </ResponsiveContainer>
               ) : (
-                <div className="h-full flex items-center justify-center text-gray-400 text-sm">
-                  Not enough data to draw the trend line yet.
+                <div className="h-full flex items-center justify-center text-zinc-400 text-xs font-sans">
+                  Not enough sequential balance increments to chart trend.
                 </div>
               )}
             </div>
           </div>
 
           {/* Allocation Breakdown Pie Chart */}
-          <div className="bg-white p-5 border border-gray-100 rounded-2xl shadow-xs">
-            <h3 className="text-base font-display font-bold text-gray-800 mb-4">Spend by Category</h3>
-            
-            <div className="w-full h-56 flex justify-center items-center">
-              {stats.pieData.length > 0 ? (
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={stats.pieData}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={55}
-                      outerRadius={75}
-                      paddingAngle={3}
-                      dataKey="value"
-                    >
-                      {stats.pieData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={CATEGORY_COLORS[entry.name] || '#10B981'} />
-                      ))}
-                    </Pie>
-                    <Tooltip
-                      formatter={(val: number) => [`${currency.symbol}${val.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, 'Spent']}
-                      contentStyle={{ backgroundColor: '#1e293b', borderRadius: '12px', border: 'none', color: '#fff' }}
-                    />
-                  </PieChart>
-                </ResponsiveContainer>
-              ) : (
-                <div className="text-gray-400 text-sm">No expenses recorded in this period.</div>
-              )}
+          <div className="bg-white p-5 border border-zinc-200/50 rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.02)] flex flex-col justify-between">
+            <div>
+              <h3 className="text-xs font-mono font-bold text-zinc-405 uppercase tracking-widest mb-4">Spend by Category</h3>
+              
+              <div className="w-full h-56 flex justify-center items-center">
+                {stats.pieData.length > 0 ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={stats.pieData}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={55}
+                        outerRadius={75}
+                        paddingAngle={3}
+                        dataKey="value"
+                      >
+                        {stats.pieData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={CATEGORY_COLORS[entry.name] || '#71717A'} />
+                        ))}
+                      </Pie>
+                      <Tooltip content={renderCustomTooltip} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="text-zinc-400 text-xs font-light">No expenses recorded in this period.</div>
+                )}
+              </div>
             </div>
             
             {/* Pie Legends */}
             <div className="mt-4 max-h-24 overflow-y-auto space-y-1.5 pr-1">
               {stats.pieData.slice(0, 5).map((entry) => (
-                <div key={entry.name} className="flex items-center justify-between text-xs font-sans">
+                <div key={entry.name} className="flex items-center justify-between text-[11px] font-sans">
                   <div className="flex items-center gap-1.5 min-w-0">
-                    <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: CATEGORY_COLORS[entry.name] }} />
-                    <span className="truncate text-gray-600">{entry.name}</span>
+                    <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: CATEGORY_COLORS[entry.name] }} />
+                    <span className="truncate text-zinc-500 font-medium">{entry.name}</span>
                   </div>
-                  <span className="font-semibold text-gray-800 shrink-0 font-mono">{currency.symbol}{entry.value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                  <span className="font-semibold text-zinc-800 shrink-0 font-mono">{currency.symbol}{entry.value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                 </div>
               ))}
               {stats.pieData.length > 5 && (
-                <div className="text-[10px] text-center text-gray-400 font-sans mt-1">
-                  + {stats.pieData.length - 5} other categories
+                <div className="text-[9px] text-center text-zinc-400 font-mono font-bold mt-1">
+                  + {stats.pieData.length - 5} Other categories
                 </div>
               )}
             </div>
           </div>
 
           {/* Monthly Comparison Bar Chart */}
-          <div className="bg-white p-5 border border-gray-100 rounded-2xl shadow-xs lg:col-span-3">
-            <h3 className="text-base font-display font-bold text-gray-800 mb-4">Income vs Expenses by Month</h3>
+          <div className="bg-white p-5 border border-zinc-200/50 rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.02)] lg:col-span-3">
+            <h3 className="text-xs font-mono font-bold text-zinc-405 uppercase tracking-widest mb-4">Inflows vs Outflows (Calendar Year)</h3>
             <div className="w-full h-64">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={monthlyData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
-                  <XAxis dataKey="monthName" stroke="#94a3b8" fontSize={11} tickLine={false} axisLine={false} />
-                  <YAxis stroke="#94a3b8" fontSize={11} tickLine={false} axisLine={false} />
-                  <Tooltip 
-                    formatter={(val: number) => [`${currency.symbol}${val.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, '']}
-                    contentStyle={{ backgroundColor: '#1e293b', borderRadius: '12px', border: 'none', color: '#fff' }}
-                  />
-                  <Legend verticalAlign="top" height={36} iconType="circle" iconSize={8} />
-                  <Bar dataKey="Income" fill="#10B981" radius={[4, 4, 0, 0]} barSize={16} />
-                  <Bar dataKey="Expense" fill="#EF4444" radius={[4, 4, 0, 0]} barSize={16} />
+                  <XAxis dataKey="monthName" stroke="#A1A1AA" fontSize={10} tickLine={false} axisLine={false} />
+                  <YAxis stroke="#A1A1AA" fontSize={10} tickLine={false} axisLine={false} />
+                  <Tooltip content={renderCustomTooltip} />
+                  <Legend verticalAlign="top" height={36} iconType="circle" iconSize={8} wrapperStyle={{ fontSize: '11px', fontFamily: 'sans-serif' }} />
+                  <Bar dataKey="Income" fill="#10B981" radius={[3, 3, 0, 0]} barSize={12} />
+                  <Bar dataKey="Expense" fill="#71717A" radius={[3, 3, 0, 0]} barSize={12} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
